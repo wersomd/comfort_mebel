@@ -1,50 +1,60 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Product } from '../types';
 import {
   getProducts, addProduct, updateProduct,
-  deleteProduct, deleteProducts, saveProducts,
+  deleteProduct, deleteProducts, saveProducts, replaceAllProducts,
 } from '../lib/store';
 import { generateId } from '../lib/utils';
 
 export function useProducts() {
-  const [products, setProducts] = useState<Product[]>(() => getProducts());
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => setProducts(getProducts()), []);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await getProducts();
+      setProducts(list);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const create = useCallback((data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const create = useCallback(async (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
     const product: Product = { ...data, id: generateId(), createdAt: now, updatedAt: now };
-    addProduct(product);
-    refresh();
+    await addProduct(product);
+    await refresh();
     return product;
   }, [refresh]);
 
-  const update = useCallback((id: string, data: Partial<Omit<Product, 'id' | 'createdAt'>>) => {
-    updateProduct(id, data);
-    refresh();
+  const update = useCallback(async (id: string, data: Partial<Omit<Product, 'id' | 'createdAt'>>) => {
+    await updateProduct(id, data);
+    await refresh();
   }, [refresh]);
 
-  const remove = useCallback((id: string) => {
-    deleteProduct(id);
-    refresh();
+  const remove = useCallback(async (id: string) => {
+    await deleteProduct(id);
+    await refresh();
   }, [refresh]);
 
-  const removeMany = useCallback((ids: string[]) => {
-    deleteProducts(ids);
-    refresh();
+  const removeMany = useCallback(async (ids: string[]) => {
+    await deleteProducts(ids);
+    await refresh();
   }, [refresh]);
 
-  const importProducts = useCallback((incoming: Product[], mode: 'append' | 'replace') => {
+  const importProducts = useCallback(async (incoming: Product[], mode: 'append' | 'replace') => {
     if (mode === 'replace') {
-      saveProducts(incoming);
+      await replaceAllProducts(incoming);
     } else {
-      const existing = getProducts();
       const skus = new Set(incoming.map(p => p.sku));
-      const merged = [...existing.filter(p => !skus.has(p.sku)), ...incoming];
-      saveProducts(merged);
+      const existing = products.filter(p => !skus.has(p.sku));
+      await saveProducts([...existing, ...incoming]);
     }
-    refresh();
-  }, [refresh]);
+    await refresh();
+  }, [refresh, products]);
 
-  return { products, refresh, create, update, remove, removeMany, importProducts };
+  return { products, loading, refresh, create, update, remove, removeMany, importProducts };
 }

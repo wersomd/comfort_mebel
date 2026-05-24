@@ -2,11 +2,12 @@ import { useState, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import { useProducts } from '../../hooks/useProducts';
 import { useCategories } from '../../hooks/useCategories';
+import { supabase, PRODUCT_BUCKET } from '../../lib/supabase';
 import type { Product, Category } from '../../types';
 import { T } from '../ui';
 
-/* Resize an uploaded image and return a JPEG data URL (keeps localStorage light) */
-function fileToDataURL(file: File, maxDim = 1400): Promise<string> {
+/* Resize image to a JPEG Blob before upload (keep storage small + uniform) */
+function fileToJpegBlob(file: File, maxDim = 1400, quality = 0.85): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -24,7 +25,7 @@ function fileToDataURL(file: File, maxDim = 1400): Promise<string> {
         const ctx = canvas.getContext('2d');
         if (!ctx) { reject(new Error('canvas unavailable')); return; }
         ctx.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', quality);
       };
       image.onerror = reject;
       image.src = reader.result as string;
@@ -32,6 +33,19 @@ function fileToDataURL(file: File, maxDim = 1400): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+async function uploadProductImage(file: File, skuOrId: string): Promise<string> {
+  const blob = await fileToJpegBlob(file);
+  const safeFolder = (skuOrId || 'product').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const path = `products/${safeFolder}/${name}`;
+  const { error } = await supabase.storage
+    .from(PRODUCT_BUCKET)
+    .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from(PRODUCT_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
 }
 
 /* ── Two-level category selector ─────────────────────────── */
@@ -79,7 +93,7 @@ function CategorySelect({ categories, value, onChange, err }: {
 /* ── Form ─────────────────────────────────────────────────── */
 const EMPTY: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = {
   sku: '', name: '', category: '', price: 0, description: '',
-  images: [], material: '', color: '', dimensions: '', inStock: true, badges: [], relatedIds: [],
+  images: [], material: '', color: '', dimensions: '', badges: [], relatedIds: [],
 };
 
 export function AdminProductForm() {
@@ -96,7 +110,7 @@ export function AdminProductForm() {
       price: existing.price, oldPrice: existing.oldPrice, description: existing.description,
       images: existing.images, material: existing.material || '',
       color: existing.color || '', dimensions: existing.dimensions || '',
-      inStock: existing.inStock, badges: existing.badges, relatedIds: existing.relatedIds || [],
+      badges: existing.badges, relatedIds: existing.relatedIds || [],
     } : { ...EMPTY }
   );
   const [imageUrl, setImageUrl] = useState('');
@@ -113,12 +127,22 @@ export function AdminProductForm() {
     if (imageUrl.trim()) { set('images', [...form.images, imageUrl.trim()]); setImageUrl(''); }
   };
 
+  const [uploading, setUploading] = useState(false);
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const urls = await Promise.all(files.map(f => fileToDataURL(f)));
-    set('images', [...form.images, ...urls]);
-    e.target.value = '';
+    setUploading(true);
+    try {
+      const folder = form.sku || existing?.id || 'new';
+      const urls = await Promise.all(files.map(f => uploadProductImage(f, folder)));
+      set('images', [...form.images, ...urls]);
+    } catch (err) {
+      console.error('upload failed', err);
+      alert('Не удалось загрузить фото. Войдите в админку и попробуйте снова.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const addRelated = (rid: string) => {
@@ -144,8 +168,16 @@ export function AdminProductForm() {
     e.preventDefault();
     if (!validate()) return;
     setSaving(true);
-    try { isNew ? create(form) : update(id!, form); navigate('/admin/products'); }
-    finally { setSaving(false); }
+    try {
+      if (isNew) await create(form);
+      else await update(id!, form);
+      navigate('/admin/products');
+    } catch (err) {
+      console.error('save failed', err);
+      alert('Не удалось сохранить. Проверьте подключение и права доступа.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   /* Styles */
@@ -255,15 +287,15 @@ export function AdminProductForm() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ display: 'none' }} />
-            <button type="button" onClick={() => fileRef.current?.click()} style={{
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} style={{
               background: T.card, color: T.brand, border: `1px solid ${T.brand}`, borderRadius: T.radiusSm,
-              padding: '9px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.font,
-              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '9px 16px', fontSize: 12, fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: T.font,
+              display: 'flex', alignItems: 'center', gap: 7, opacity: uploading ? 0.6 : 1,
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              Загрузить с компьютера
+              {uploading ? 'Загрузка...' : 'Загрузить с компьютера'}
             </button>
             <span style={{ fontSize: 12, color: T.muted }}>можно выбрать несколько</span>
           </div>

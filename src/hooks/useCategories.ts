@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Category } from '../types';
 import {
   getCategories, addCategory, updateCategory,
@@ -7,37 +7,43 @@ import {
 import { generateId } from '../lib/utils';
 
 export function useCategories() {
-  const [categories, setCategories] = useState<Category[]>(() =>
-    [...getCategories()].sort((a, b) => a.order - b.order)
-  );
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() =>
-    setCategories([...getCategories()].sort((a, b) => a.order - b.order)),
-    []
-  );
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await getCategories();
+      setCategories([...list].sort((a, b) => a.order - b.order));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const create = useCallback((data: Omit<Category, 'id'>) => {
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const create = useCallback(async (data: Omit<Category, 'id'>) => {
     const category: Category = { ...data, id: generateId() };
-    addCategory(category);
-    refresh();
+    await addCategory(category);
+    await refresh();
     return category;
   }, [refresh]);
 
-  const update = useCallback((id: string, data: Partial<Omit<Category, 'id'>>) => {
-    updateCategory(id, data);
-    refresh();
+  const update = useCallback(async (id: string, data: Partial<Omit<Category, 'id'>>) => {
+    await updateCategory(id, data);
+    await refresh();
   }, [refresh]);
 
-  const remove = useCallback((id: string) => {
-    deleteCategory(id);
-    refresh();
+  const remove = useCallback(async (id: string) => {
+    await deleteCategory(id);
+    await refresh();
   }, [refresh]);
 
-  const reorder = useCallback((ordered: Category[]) => {
+  const reorder = useCallback(async (ordered: Category[]) => {
     const updated = ordered.map((c, i) => ({ ...c, order: i + 1 }));
-    saveCategories(updated);
-    refresh();
+    await saveCategories(updated);
+    await refresh();
   }, [refresh]);
 
-  return { categories, refresh, create, update, remove, reorder };
+  return { categories, loading, refresh, create, update, remove, reorder };
 }

@@ -1,23 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { supabase } from '../../lib/supabase';
 import { T } from '../ui';
 
-const PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
-
 export function AdminLogin() {
-  const [value, setValue] = useState('');
-  const [error, setError] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Если уже залогинен — сразу в дашборд
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate('/admin/dashboard', { replace: true });
+    });
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (value === PASSWORD) {
-      sessionStorage.setItem('comfort_admin', '1');
-      navigate('/admin/dashboard');
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (err) {
+      setError(err.message === 'Invalid login credentials'
+        ? 'Неверный email или пароль'
+        : err.message);
+      return;
     }
+    navigate('/admin/dashboard');
   };
 
   return (
@@ -39,15 +52,40 @@ export function AdminLogin() {
           boxShadow: T.shadow, padding: '36px 34px',
         }}>
           <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: T.muted, marginBottom: 8, fontWeight: 600 }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoFocus
+                required
+                placeholder="admin@example.com"
+                style={{
+                  width: '100%',
+                  background: T.pageBg,
+                  border: `1px solid ${error ? '#FCA5A5' : T.border}`,
+                  borderRadius: T.radiusSm,
+                  color: T.ink,
+                  fontSize: 14,
+                  padding: '12px 14px',
+                  outline: 'none',
+                  fontFamily: T.font,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
             <div style={{ marginBottom: 18 }}>
               <label style={{ display: 'block', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: T.muted, marginBottom: 8, fontWeight: 600 }}>
                 Пароль
               </label>
               <input
                 type="password"
-                value={value}
-                onChange={e => setValue(e.target.value)}
-                autoFocus
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
                 placeholder="Введите пароль"
                 style={{
                   width: '100%',
@@ -63,10 +101,10 @@ export function AdminLogin() {
                 }}
               />
               {error && (
-                <p style={{ fontSize: 11.5, color: T.danger, marginTop: 8 }}>Неверный пароль</p>
+                <p style={{ fontSize: 11.5, color: T.danger, marginTop: 8 }}>{error}</p>
               )}
             </div>
-            <button type="submit" style={{
+            <button type="submit" disabled={loading} style={{
               width: '100%',
               background: T.brand,
               color: '#FFFFFF',
@@ -77,13 +115,14 @@ export function AdminLogin() {
               padding: '13px 0',
               border: 'none',
               borderRadius: T.radiusSm,
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               fontFamily: T.font,
               transition: 'background 0.2s',
+              opacity: loading ? 0.7 : 1,
             }}
-              onMouseEnter={e => (e.currentTarget.style.background = T.brandHover)}
+              onMouseEnter={e => { if (!loading) e.currentTarget.style.background = T.brandHover; }}
               onMouseLeave={e => (e.currentTarget.style.background = T.brand)}>
-              Войти
+              {loading ? 'Вход...' : 'Войти'}
             </button>
           </form>
         </div>

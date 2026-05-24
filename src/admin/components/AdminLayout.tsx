@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
+import { supabase } from '../../lib/supabase';
 import { T } from '../ui';
 
 const NAV = [
@@ -14,6 +15,10 @@ const NAV = [
   {
     to: '/admin/categories', label: 'Категории',
     icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.3" fill="currentColor"/><circle cx="3.5" cy="12" r="1.3" fill="currentColor"/><circle cx="3.5" cy="18" r="1.3" fill="currentColor"/></svg>,
+  },
+  {
+    to: '/admin/leads', label: 'Заявки',
+    icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M22 16.92V19a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 3.18 2 2 0 0 1 4.11 1h2.09a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L7.6 8.5a16 16 0 0 0 6 6l1.86-1.86a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>,
   },
   {
     to: '/admin/import', label: 'Импорт Excel',
@@ -42,7 +47,10 @@ function NavItem({ to, label, icon }: { to: string; label: string; icon: React.R
 
 export function AdminLayout() {
   const navigate = useNavigate();
-  const logout = () => { sessionStorage.removeItem('comfort_admin'); navigate('/admin'); };
+  const logout = async () => {
+    await supabase.auth.signOut();
+    navigate('/admin');
+  };
 
   const footLink: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',

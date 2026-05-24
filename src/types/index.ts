@@ -10,7 +10,7 @@ export interface Product {
   material?: string;
   color?: string;
   dimensions?: string;
-  inStock: boolean;
+  inStock?: boolean;
   badges: Array<'new' | 'popular' | 'sale'>;
   relatedIds?: string[];
   createdAt: string;

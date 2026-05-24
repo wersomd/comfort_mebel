@@ -1,15 +1,43 @@
 import { useState } from 'react';
+import { createLead } from '../lib/store';
 
 interface Props { open: boolean; onClose: () => void; productName?: string; }
 
 export function ConsultModal({ open, onClose, productName }: Props) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   if (!open) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => { setSubmitted(false); onClose(); }, 2500);
+    if (sending) return;
+    setError(null);
+    setSending(true);
+    try {
+      await createLead({
+        type: 'consult',
+        name: name.trim(),
+        phone: phone.trim(),
+        message: message.trim() || undefined,
+        productName,
+      });
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        setName(''); setPhone(''); setMessage('');
+        onClose();
+      }, 2500);
+    } catch (err) {
+      console.error('lead submit', err);
+      setError('Не удалось отправить. Проверьте интернет и попробуйте снова.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -39,15 +67,16 @@ export function ConsultModal({ open, onClose, productName }: Props) {
               {productName ? `по товару: ${productName}` : 'Наши специалисты помогут подобрать идеальную мебель'}
             </p>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <input type="text" placeholder="Ваше имя" required
+              <input type="text" placeholder="Ваше имя" required value={name} onChange={e => setName(e.target.value)}
                 className="border-b border-[#E8D9C6] py-3 text-[14px] text-[#3D2C25] placeholder:text-[#9A8070] focus:outline-none focus:border-[#C4A07A] transition-colors bg-transparent" />
-              <input type="tel" placeholder="Телефон" required
+              <input type="tel" placeholder="Телефон" required value={phone} onChange={e => setPhone(e.target.value)}
                 className="border-b border-[#E8D9C6] py-3 text-[14px] text-[#3D2C25] placeholder:text-[#9A8070] focus:outline-none focus:border-[#C4A07A] transition-colors bg-transparent" />
-              <textarea placeholder="Комментарий" rows={3}
+              <textarea placeholder="Комментарий" rows={3} value={message} onChange={e => setMessage(e.target.value)}
                 className="border-b border-[#E8D9C6] py-3 text-[14px] text-[#3D2C25] placeholder:text-[#9A8070] focus:outline-none focus:border-[#C4A07A] transition-colors bg-transparent resize-none" />
-              <button type="submit"
-                className="mt-3 bg-[#3D2C25] text-white text-[11px] tracking-[2px] uppercase py-4 font-['Inter'] font-bold hover:bg-[#C4A07A] transition-colors duration-200">
-                Отправить
+              {error && <p className="text-[12px] text-red-600 font-['Inter']">{error}</p>}
+              <button type="submit" disabled={sending}
+                className="mt-3 bg-[#3D2C25] text-white text-[11px] tracking-[2px] uppercase py-4 font-['Inter'] font-bold hover:bg-[#C4A07A] transition-colors duration-200 disabled:opacity-60">
+                {sending ? 'Отправка...' : 'Отправить'}
               </button>
             </form>
           </>

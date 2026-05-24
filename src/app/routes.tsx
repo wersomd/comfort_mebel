@@ -15,6 +15,7 @@ import { AdminProducts } from '../admin/pages/AdminProducts';
 import { AdminProductForm } from '../admin/pages/AdminProductForm';
 import { AdminCategories } from '../admin/pages/AdminCategories';
 import { AdminImport } from '../admin/pages/AdminImport';
+import { AdminLeads } from '../admin/pages/AdminLeads';
 import { ProtectedRoute } from '../admin/components/ProtectedRoute';
 
 function PublicLayout() {
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
           { path: '/admin/products/new', Component: AdminProductForm },
           { path: '/admin/products/:id', Component: AdminProductForm },
           { path: '/admin/categories', Component: AdminCategories },
+          { path: '/admin/leads', Component: AdminLeads },
           { path: '/admin/import', Component: AdminImport },
         ],
       },

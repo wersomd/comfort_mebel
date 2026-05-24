@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import type { CartItem } from '../types';
 import { formatPrice } from '../lib/utils';
+import { createLead } from '../lib/store';
 
 // Кириллица — Roboto (единая регистрация для всех PDF)
 import RobotoRegularCyrillic from '@fontsource/roboto/files/roboto-cyrillic-400-normal.woff?url';
@@ -186,6 +187,8 @@ export function CheckoutModal({ open, onClose, items, total }: Props) {
   const [form, setForm] = useState<OrderForm>({ name: '', phone: '', address: '', discount: '', comment: '' });
   const [submitted, setSubmitted] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
 
@@ -195,9 +198,33 @@ export function CheckoutModal({ open, onClose, items, total }: Props) {
 
   const set = (k: keyof OrderForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (submitting) return;
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      await createLead({
+        type: 'checkout',
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim() || undefined,
+        message: form.comment.trim() || undefined,
+        cart: items.map(it => ({
+          name: it.product.name,
+          qty: it.qty,
+          price: it.product.price,
+        })),
+        total: finalTotal,
+        discount: discountAmt,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error('checkout submit', err);
+      setSubmitError('Не удалось отправить заказ. Попробуйте ещё раз.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDownloadKP = async () => {
@@ -275,7 +302,7 @@ export function CheckoutModal({ open, onClose, items, total }: Props) {
                 </div>
                 <div>
                   <label className="text-[10px] tracking-[1.5px] uppercase text-brand-mid font-['Jost'] block mb-1.5">Телефон *</label>
-                  <input required type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+7 (700) 000-00-00" className={inputCls} />
+                  <input required type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+7 (___) ___-__-__" className={inputCls} />
                 </div>
               </div>
 
@@ -312,9 +339,12 @@ export function CheckoutModal({ open, onClose, items, total }: Props) {
                 </div>
               </div>
 
+              {submitError && (
+                <p className="text-[12px] text-red-600 -mt-1">{submitError}</p>
+              )}
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 bg-brand-dark text-brand-off text-[10px] tracking-[2px] uppercase py-4 hover:bg-brand-brown transition-colors font-['Jost'] font-medium">
-                  Оформить заказ
+                <button type="submit" disabled={submitting} className="flex-1 bg-brand-dark text-brand-off text-[10px] tracking-[2px] uppercase py-4 hover:bg-brand-brown transition-colors font-['Jost'] font-medium disabled:opacity-60">
+                  {submitting ? 'Отправка...' : 'Оформить заказ'}
                 </button>
                 <button
                   type="button"
