@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash \"C:/Users/coogn/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/scripts/start-server.sh\" --project-dir \"c:/Users/coogn/OneDrive/Desktop/Comfort Mebel\")",
+      "Bash(bash \"C:/Users/coogn/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/brainstorming/scripts/start-server.sh\" --project-dir \"c:/Users/coogn/OneDrive/Desktop/Comfort Mebel\")",
+      "Bash(npm run *)",
+      "Bash(find . -type d -iname \"asset*\" -not -path \"*/node_modules/*\")",
+      "Bash(find . -type f \\\\\\( -iname \"*.png\" -o -iname \"*.jpg\" -o -iname \"*.jpeg\" -o -iname \"*.webp\" -o -iname \"*.svg\" \\\\\\) -not -path \"*/node_modules/*\" -not -path \"*/dist/*\")"
+    ]
+  }
+}

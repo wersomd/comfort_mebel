@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дизайн — Коллекции</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, sans-serif; background: #f4f0eb; color: #3D2C25; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; color: #2E1F18; }
+  .subtitle { font-size: 13px; color: #8B7060; margin-bottom: 28px; }
+
+  .option-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #8B7060; margin-bottom: 12px; font-weight: 600; }
+
+  .option-wrap {
+    background: white;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .option-wrap:hover { border-color: #C4A07A; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .option-wrap.selected { border-color: #3D2C25; box-shadow: 0 4px 16px rgba(61,44,37,0.15); }
+  .option-wrap.selected .option-label { color: #3D2C25; }
+
+  /* --- OPTION A: Current (4-col equal) --- */
+  .grid-a {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    height: 160px;
+  }
+  .cat-photo {
+    position: relative;
+    border-radius: 2px;
+    overflow: hidden;
+    background: #8B9B8A;
+  }
+  .cat-photo img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.75); }
+  .cat-photo-label {
+    position: absolute; bottom: 8px; left: 8px; right: 8px;
+    color: white; font-size: 11px; font-weight: 600;
+    font-family: 'Georgia', serif;
+  }
+  .cat-photo.col0 { background: #7B8C7A; }
+  .cat-photo.col1 { background: #8B9B8A; }
+  .cat-photo.col2 { background: #6B7C6A; }
+  .cat-photo.col3 { background: #9BAC9A; }
+
+  /* --- OPTION B: 1 large + 3 small (photo style) --- */
+  .grid-b {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 6px;
+    height: 240px;
+  }
+  .big-card {
+    grid-row: span 3;
+    position: relative;
+    border-radius: 2px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #5A6B59 0%, #3D4D3C 100%);
+  }
+  .big-card-label {
+    position: absolute; bottom: 16px; left: 16px; right: 16px;
+    color: white; font-size: 16px; font-weight: 600;
+    font-family: 'Georgia', serif;
+  }
+  .small-card {
+    position: relative;
+    border-radius: 2px;
+    overflow: hidden;
+    height: 72px;
+  }
+  .small-card.s1 { background: linear-gradient(135deg, #8B7B6A 0%, #6B5B4A 100%); }
+  .small-card.s2 { background: linear-gradient(135deg, #6A8B7A 0%, #4A6B5A 100%); }
+  .small-card.s3 { background: linear-gradient(135deg, #8A7B8B 0%, #6A5B6B 100%); }
+  .small-card-label {
+    position: absolute; bottom: 8px; left: 10px; right: 10px;
+    color: white; font-size: 10px; font-weight: 600;
+    font-family: 'Georgia', serif;
+  }
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.3); }
+
+  /* --- OPTION C: 1 large + 3 small (3D element style) --- */
+  .grid-c {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 6px;
+    height: 240px;
+  }
+  .big-card-3d {
+    grid-row: span 3;
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #F0EAE0 0%, #E0D4C4 100%);
+    display: flex; flex-direction: column; justify-content: flex-end; padding: 16px;
+  }
+  .sofa-icon {
+    position: absolute;
+    right: -10px; bottom: 20px;
+    font-size: 80px;
+    filter: drop-shadow(4px 8px 12px rgba(0,0,0,0.25));
+    transform: perspective(200px) rotateY(-10deg);
+    line-height: 1;
+  }
+  .big-card-3d-title {
+    font-size: 16px; font-weight: 700;
+    font-family: 'Georgia', serif;
+    color: #3D2C25;
+    position: relative; z-index: 2;
+  }
+  .big-card-3d-sub {
+    font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: #9A8070; margin-top: 3px;
+    position: relative; z-index: 2;
+  }
+  .small-card-3d {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 72px;
+    display: flex; align-items: flex-end; padding: 8px 10px;
+  }
+  .small-card-3d.s1 { background: linear-gradient(135deg, #F5EDE0 0%, #E8D9C4 100%); }
+  .small-card-3d.s2 { background: linear-gradient(135deg, #E8F0E8 0%, #D4E4D0 100%); }
+  .small-card-3d.s3 { background: linear-gradient(135deg, #EDE8F0 0%, #DDD0E4 100%); }
+  .small-icon {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    font-size: 30px;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.15));
+  }
+  .small-card-3d-title {
+    font-size: 10px; font-weight: 700;
+    font-family: 'Georgia', serif; color: #3D2C25;
+    position: relative; z-index: 2;
+  }
+
+  .note { font-size: 11px; color: #8B7060; margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<h1>Как выглядит секция «Коллекции»?</h1>
+<p class="subtitle">Выбери вариант — кликни на карточку</p>
+
+<!-- OPTION A -->
+<div class="option-wrap" onclick="select(this, 'A')">
+  <div class="option-label">A — Текущий вариант (4 одинаковых)</div>
+  <div class="grid-a">
+    <div class="cat-photo col0"><div class="overlay"></div><div class="cat-photo-label">Диваны</div></div>
+    <div class="cat-photo col1"><div class="overlay"></div><div class="cat-photo-label">Кресла</div></div>
+    <div class="cat-photo col2"><div class="overlay"></div><div class="cat-photo-label">Кровати</div></div>
+    <div class="cat-photo col3"><div class="overlay"></div><div class="cat-photo-label">Столы</div></div>
+  </div>
+  <p class="note">Все карточки одного размера. Фото на весь фон.</p>
+</div>
+
+<!-- OPTION B -->
+<div class="option-wrap" onclick="select(this, 'B')">
+  <div class="option-label">B — Один большой + три маленьких (фото-стиль)</div>
+  <div class="grid-b">
+    <div class="big-card">
+      <div class="overlay"></div>
+      <div class="big-card-label">Диваны</div>
+    </div>
+    <div class="small-card s1"><div class="overlay"></div><div class="small-card-label">Кресла</div></div>
+    <div class="small-card s2"><div class="overlay"></div><div class="small-card-label">Кровати</div></div>
+    <div class="small-card s3"><div class="overlay"></div><div class="small-card-label">Столы</div></div>
+  </div>
+  <p class="note">Первая категория большая (вертикальная), остальные 3 — маленькие справа. Фото на весь фон.</p>
+</div>
+
+<!-- OPTION C -->
+<div class="option-wrap" onclick="select(this, 'C')">
+  <div class="option-label">C — Один большой + три маленьких (3D элемент)</div>
+  <div class="grid-c">
+    <div class="big-card-3d">
+      <div class="sofa-icon">🛋️</div>
+      <div class="big-card-3d-title">Диваны</div>
+      <div class="big-card-3d-sub">12 моделей</div>
+    </div>
+    <div class="small-card-3d s1">
+      <div class="small-icon">🪑</div>
+      <div class="small-card-3d-title">Кресла</div>
+    </div>
+    <div class="small-card-3d s2">
+      <div class="small-icon">🛏️</div>
+      <div class="small-card-3d-title">Кровати</div>
+    </div>
+    <div class="small-card-3d s3">
+      <div class="small-icon">🪞</div>
+      <div class="small-card-3d-title">Шкафы</div>
+    </div>
+  </div>
+  <p class="note">Светлый/кремовый фон, фото товара как объект. Без тёмного оверлея. Карточка «воздушная». (Вместо emoji будут реальные PNG-фото)</p>
+</div>
+
+<script>
+  let selected = null;
+  function select(el, choice) {
+    if (selected) selected.classList.remove('selected');
+    el.classList.add('selected');
+    selected = el;
+    if (window.sendChoice) window.sendChoice(choice, el.querySelector('.option-label').textContent);
+  }
+</script>
+</body>
+</html>

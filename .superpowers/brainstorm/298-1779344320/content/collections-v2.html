@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Коллекции — 4 карточки с объектом</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, sans-serif; background: #f4f0eb; color: #3D2C25; padding: 28px; }
+  h1 { font-size: 17px; font-weight: 600; margin-bottom: 4px; color: #2E1F18; }
+  .subtitle { font-size: 13px; color: #8B7060; margin-bottom: 28px; }
+
+  .section-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title { font-family: Georgia, serif; font-size: 28px; color: #3D2C25; }
+  .section-link { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A8070; border-bottom: 1px solid #E8D9C6; padding-bottom: 2px; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+  .cat-card {
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid transparent;
+  }
+  .cat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(61,44,37,0.12); }
+  .cat-card.selected { border-color: #3D2C25; }
+
+  /* background variants */
+  .cat-card.c1 { background: linear-gradient(160deg, #F5EDE0 0%, #E8D9C4 60%, #D4C5B0 100%); }
+  .cat-card.c2 { background: linear-gradient(160deg, #E8EFE4 0%, #D4E0CF 60%, #C0CDB8 100%); }
+  .cat-card.c3 { background: linear-gradient(160deg, #EDE8F2 0%, #DDD0E8 60%, #CCBEDD 100%); }
+  .cat-card.c4 { background: linear-gradient(160deg, #EFF0E8 0%, #E0E2D0 60%, #D0D2C0 100%); }
+
+  .card-inner { padding: 16px 12px 14px; min-height: 200px; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+
+  /* Product image as floating object */
+  .product-img {
+    position: absolute;
+    bottom: 44px; left: 50%;
+    transform: translateX(-50%);
+    width: 85%;
+    max-height: 130px;
+    object-fit: contain;
+    filter: drop-shadow(0px 16px 24px rgba(61,44,37,0.22));
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
+  }
+  .cat-card:hover .product-img {
+    transform: translateX(-50%) translateY(-6px) scale(1.04);
+  }
+
+  /* Emoji as placeholder for product (in real version = real PNG) */
+  .product-emoji {
+    position: absolute;
+    bottom: 44px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 90px;
+    line-height: 1;
+    filter: drop-shadow(0px 16px 20px rgba(61,44,37,0.2));
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
+    text-align: center;
+    width: 100%;
+  }
+  .cat-card:hover .product-emoji {
+    transform: translateX(-50%) translateY(-8px) scale(1.06);
+  }
+
+  .cat-name { font-family: Georgia, serif; font-size: 15px; color: #3D2C25; font-weight: 600; position: relative; z-index: 2; }
+  .cat-count { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #9A8070; margin-top: 2px; position: relative; z-index: 2; }
+
+  /* Option wrap */
+  .option-wrap {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .option-wrap:hover { border-color: #C4A07A; }
+  .option-wrap.selected { border-color: #3D2C25; }
+  .opt-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #8B7060; font-weight: 600; margin-bottom: 14px; }
+  .opt-note { font-size: 11px; color: #8B7060; margin-top: 14px; line-height: 1.5; }
+
+  /* Real product photo version */
+  .cat-card-photo .product-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0.18;
+    filter: blur(2px);
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Коллекции — вариант с объектом</h1>
+<p class="subtitle">Выбери стиль карточек</p>
+
+<!-- OPTION A: emoji/object on cream bg -->
+<div class="option-wrap" onclick="select(this, 'A')">
+  <div class="opt-label">A — Кремовый фон, товар как объект (без фото-фона)</div>
+
+  <div class="section-header">
+    <span class="section-title">Коллекции</span>
+    <span class="section-link">Все категории</span>
+  </div>
+
+  <div class="grid">
+    <div class="cat-card c1">
+      <div class="card-inner">
+        <div class="product-emoji">🛋️</div>
+        <div class="cat-name">Диваны</div>
+        <div class="cat-count">12 моделей</div>
+      </div>
+    </div>
+    <div class="cat-card c2">
+      <div class="card-inner">
+        <div class="product-emoji">🪑</div>
+        <div class="cat-name">Кресла</div>
+        <div class="cat-count">8 моделей</div>
+      </div>
+    </div>
+    <div class="cat-card c3">
+      <div class="card-inner">
+        <div class="product-emoji">🛏️</div>
+        <div class="cat-name">Кровати</div>
+        <div class="cat-count">10 моделей</div>
+      </div>
+    </div>
+    <div class="cat-card c4">
+      <div class="card-inner">
+        <div class="product-emoji">🚪</div>
+        <div class="cat-name">Шкафы</div>
+        <div class="cat-count">6 моделей</div>
+      </div>
+    </div>
+  </div>
+  <p class="opt-note">✓ Фон каждой карточки — кремово-бежевый градиент. Товар (реальное фото PNG без фона) висит по центру с тенью. При наведении — товар «поднимается». В реальности вместо emoji — фото дивана, кресла и т.д. без белого фона.</p>
+</div>
+
+<!-- OPTION B: real photo faded as background + object on top -->
+<div class="option-wrap" onclick="select(this, 'B')">
+  <div class="opt-label">B — Слабое фото на фоне + товар поверх (глубина)</div>
+
+  <div class="section-header">
+    <span class="section-title">Коллекции</span>
+    <span class="section-link">Все категории</span>
+  </div>
+
+  <div class="grid">
+    <div class="cat-card c1 cat-card-photo">
+      <div class="product-bg" style="background-image: url('https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=60')"></div>
+      <div class="card-inner">
+        <div class="product-emoji">🛋️</div>
+        <div class="cat-name">Диваны</div>
+        <div class="cat-count">12 моделей</div>
+      </div>
+    </div>
+    <div class="cat-card c2 cat-card-photo">
+      <div class="product-bg" style="background-image: url('https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&q=60')"></div>
+      <div class="card-inner">
+        <div class="product-emoji">🪑</div>
+        <div class="cat-name">Кресла</div>
+        <div class="cat-count">8 моделей</div>
+      </div>
+    </div>
+    <div class="cat-card c3 cat-card-photo">
+      <div class="product-bg" style="background-image: url('https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=60')"></div>
+      <div class="card-inner">
+        <div class="product-emoji">🛏️</div>
+        <div class="cat-name">Кровати</div>
+        <div class="cat-count">10 моделей</div>
+      </div>
+    </div>
+    <div class="cat-card c4 cat-card-photo">
+      <div class="product-bg" style="background-image: url('https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&q=60')"></div>
+      <div class="card-inner">
+        <div class="product-emoji">🚪</div>
+        <div class="cat-name">Шкафы</div>
+        <div class="cat-count">6 моделей</div>
+      </div>
+    </div>
+  </div>
+  <p class="opt-note">✓ То же самое, но фото из базы слегка просвечивает через фон (opacity 0.18, размытие). Создаёт ощущение глубины. Основной объект поверх.</p>
+</div>
+
+<script>
+  let sel = null;
+  function select(el, choice) {
+    if (sel) sel.classList.remove('selected');
+    el.classList.add('selected'); sel = el;
+    if (window.sendChoice) window.sendChoice(choice, el.querySelector('.opt-label').textContent);
+  }
+</script>
+</body>
+</html>

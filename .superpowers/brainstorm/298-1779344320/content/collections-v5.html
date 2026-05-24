@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Коллекции</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #fff; font-family: Inter, sans-serif; padding: 32px; }
+
+  .section-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .section-title { font-family: Georgia, serif; font-size: 32px; color: #3D2C25; font-weight: 500; }
+  .section-link { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A8070; border-bottom: 1px solid #E8D9C6; padding-bottom: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  .cat-card {
+    background: #fff;
+    cursor: pointer;
+    transition: transform 0.25s;
+    display: flex;
+    flex-direction: column;
+    min-height: 230px;
+  }
+  .cat-card:hover { transform: translateY(-4px); }
+
+  .cat-photo-area {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px 12px 8px;
+  }
+  .cat-photo-area img {
+    width: 100%;
+    height: 160px;
+    object-fit: contain;
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
+  }
+  .cat-card:hover .cat-photo-area img { transform: translateY(-5px) scale(1.04); }
+
+  .cat-info {
+    padding: 10px 4px 4px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cat-name { font-family: Georgia, serif; font-size: 15px; color: #3D2C25; font-weight: 600; }
+  .cat-arrow { font-size: 14px; color: #C4A07A; }
+</style>
+</head>
+<body>
+
+  <div class="section-header">
+    <span class="section-title">Коллекции</span>
+    <span class="section-link">Все категории</span>
+  </div>
+
+  <div class="grid">
+    <div class="cat-card">
+      <div class="cat-photo-area">
+        <img src="https://cdn0.divan.ru/img/v1/Ma_WTiysezV-HNHrYqLnjmyipyXfLlX7s64lT0tsu18/t:0::0:0/pd:60:60:60:60/rs:fit:1148:720:0:1:ce:0:0/g:ce:0:0/bg:f5f3f1/q:85/czM6Ly9kaXZhbi9wcm9kdWN0LzQ4Nzk4NzMucG5n.jpg" alt="Диваны" />
+      </div>
+      <div class="cat-info">
+        <span class="cat-name">Диваны</span>
+        <span class="cat-arrow">→</span>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="cat-photo-area">
+        <img src="https://cdn0.divan.ru/img/v1/Ma_WTiysezV-HNHrYqLnjmyipyXfLlX7s64lT0tsu18/t:0::0:0/pd:60:60:60:60/rs:fit:1148:720:0:1:ce:0:0/g:ce:0:0/bg:f5f3f1/q:85/czM6Ly9kaXZhbi9wcm9kdWN0LzQ4Nzk4NzMucG5n.jpg" alt="Кресла" />
+      </div>
+      <div class="cat-info">
+        <span class="cat-name">Кресла</span>
+        <span class="cat-arrow">→</span>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="cat-photo-area">
+        <img src="https://cdn0.divan.ru/img/v1/Ma_WTiysezV-HNHrYqLnjmyipyXfLlX7s64lT0tsu18/t:0::0:0/pd:60:60:60:60/rs:fit:1148:720:0:1:ce:0:0/g:ce:0:0/bg:f5f3f1/q:85/czM6Ly9kaXZhbi9wcm9kdWN0LzQ4Nzk4NzMucG5n.jpg" alt="Кровати" />
+      </div>
+      <div class="cat-info">
+        <span class="cat-name">Кровати</span>
+        <span class="cat-arrow">→</span>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="cat-photo-area">
+        <img src="https://cdn0.divan.ru/img/v1/Ma_WTiysezV-HNHrYqLnjmyipyXfLlX7s64lT0tsu18/t:0::0:0/pd:60:60:60:60/rs:fit:1148:720:0:1:ce:0:0/g:ce:0:0/bg:f5f3f1/q:85/czM6Ly9kaXZhbi9wcm9kdWN0LzQ4Nzk4NzMucG5n.jpg" alt="Шкафы" />
+      </div>
+      <div class="cat-info">
+        <span class="cat-name">Шкафы</span>
+        <span class="cat-arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
