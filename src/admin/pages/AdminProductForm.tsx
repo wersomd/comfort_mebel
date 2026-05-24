@@ -2,51 +2,9 @@ import { useState, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import { useProducts } from '../../hooks/useProducts';
 import { useCategories } from '../../hooks/useCategories';
-import { supabase, PRODUCT_BUCKET } from '../../lib/supabase';
+import { uploadImage } from '../../lib/upload';
 import type { Product, Category } from '../../types';
 import { T } from '../ui';
-
-/* Resize image to a JPEG Blob before upload (keep storage small + uniform) */
-function fileToJpegBlob(file: File, maxDim = 1400, quality = 0.85): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const image = new Image();
-      image.onload = () => {
-        let { width, height } = image;
-        if (width > maxDim || height > maxDim) {
-          const scale = maxDim / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { reject(new Error('canvas unavailable')); return; }
-        ctx.drawImage(image, 0, 0, width, height);
-        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', quality);
-      };
-      image.onerror = reject;
-      image.src = reader.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-async function uploadProductImage(file: File, skuOrId: string): Promise<string> {
-  const blob = await fileToJpegBlob(file);
-  const safeFolder = (skuOrId || 'product').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-  const path = `products/${safeFolder}/${name}`;
-  const { error } = await supabase.storage
-    .from(PRODUCT_BUCKET)
-    .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
-  if (error) throw error;
-  const { data } = supabase.storage.from(PRODUCT_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
-}
 
 /* ── Two-level category selector ─────────────────────────── */
 function CategorySelect({ categories, value, onChange, err }: {
@@ -133,8 +91,8 @@ export function AdminProductForm() {
     if (!files.length) return;
     setUploading(true);
     try {
-      const folder = form.sku || existing?.id || 'new';
-      const urls = await Promise.all(files.map(f => uploadProductImage(f, folder)));
+      const folder = `products/${form.sku || existing?.id || 'new'}`;
+      const urls = await Promise.all(files.map(f => uploadImage(f, folder, 1400)));
       set('images', [...form.images, ...urls]);
     } catch (err) {
       console.error('upload failed', err);
