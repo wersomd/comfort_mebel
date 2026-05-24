@@ -4,25 +4,22 @@ import type { CartItem } from '../types';
 import { formatPrice } from '../lib/utils';
 import { createLead } from '../lib/store';
 
-// Кириллица — Roboto (единая регистрация для всех PDF)
-import RobotoRegularCyrillic from '@fontsource/roboto/files/roboto-cyrillic-400-normal.woff?url';
-import RobotoBoldCyrillic    from '@fontsource/roboto/files/roboto-cyrillic-700-normal.woff?url';
-import RobotoRegularLatin    from '@fontsource/roboto/files/roboto-latin-400-normal.woff?url';
-import RobotoBoldLatin       from '@fontsource/roboto/files/roboto-latin-700-normal.woff?url';
+// Roboto — НЕ subset, один файл со всеми алфавитами (Latin + Cyrillic + Greek)
+import RobotoRegular from 'roboto-fontface/fonts/roboto/Roboto-Regular.woff?url';
+import RobotoBold    from 'roboto-fontface/fonts/roboto/Roboto-Bold.woff?url';
 
-// Guard: не регистрировать повторно
 let fontRegistered = false;
 function ensureFont() {
   if (fontRegistered) return;
   Font.register({
     family: 'Roboto',
     fonts: [
-      { src: RobotoRegularLatin,    fontWeight: 400 },
-      { src: RobotoRegularCyrillic, fontWeight: 400 },
-      { src: RobotoBoldLatin,       fontWeight: 700 },
-      { src: RobotoBoldCyrillic,    fontWeight: 700 },
+      { src: RobotoRegular, fontWeight: 400 },
+      { src: RobotoBold,    fontWeight: 700 },
     ],
   });
+  // Отключаем переносы слов (по умолчанию @react-pdf режет длинные слова на буквы)
+  Font.registerHyphenationCallback(word => [word]);
   fontRegistered = true;
 }
 

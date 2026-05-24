@@ -2,21 +2,18 @@ import { Document, Page, Text, View, StyleSheet, Image, pdf, Font } from '@react
 import type { Product } from '../types';
 import { formatPrice } from './utils';
 
-// ——— Регистрация шрифта Roboto с поддержкой кириллицы ———
-import RobotoRegularCyrillic from '@fontsource/roboto/files/roboto-cyrillic-400-normal.woff?url';
-import RobotoBoldCyrillic    from '@fontsource/roboto/files/roboto-cyrillic-700-normal.woff?url';
-import RobotoRegularLatin    from '@fontsource/roboto/files/roboto-latin-400-normal.woff?url';
-import RobotoBoldLatin       from '@fontsource/roboto/files/roboto-latin-700-normal.woff?url';
+// Roboto — НЕ subset, один файл со всеми алфавитами
+import RobotoRegular from 'roboto-fontface/fonts/roboto/Roboto-Regular.woff?url';
+import RobotoBold    from 'roboto-fontface/fonts/roboto/Roboto-Bold.woff?url';
 
 Font.register({
   family: 'Roboto',
   fonts: [
-    { src: RobotoRegularLatin,    fontWeight: 400 },
-    { src: RobotoRegularCyrillic, fontWeight: 400 },
-    { src: RobotoBoldLatin,       fontWeight: 700 },
-    { src: RobotoBoldCyrillic,    fontWeight: 700 },
+    { src: RobotoRegular, fontWeight: 400 },
+    { src: RobotoBold,    fontWeight: 700 },
   ],
 });
+Font.registerHyphenationCallback(word => [word]);
 
 // ——— Стили каталога ———
 const styles = StyleSheet.create({
