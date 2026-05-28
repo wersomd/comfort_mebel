@@ -65,6 +65,80 @@ function newColorId(): string {
   return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+/* ── Sortable image grid (drag-and-drop) ───────────────────── */
+interface SortableImageGridProps {
+  images: string[];
+  onChange: (next: string[]) => void;
+  thumbSize?: number;
+  hint?: string;
+}
+
+function SortableImageGrid({ images, onChange, thumbSize = 84, hint }: SortableImageGridProps) {
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+
+  if (images.length === 0) return null;
+
+  const move = (from: number, to: number) => {
+    if (from === to) return;
+    const next = [...images];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    onChange(next);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        {images.map((img, i) => (
+          <div key={`${img}-${i}`}
+            draggable
+            onDragStart={e => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move'; }}
+            onDragOver={e => { e.preventDefault(); setOverIdx(i); }}
+            onDragLeave={() => setOverIdx(null)}
+            onDrop={() => { if (dragIdx !== null) move(dragIdx, i); setDragIdx(null); setOverIdx(null); }}
+            onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+            style={{
+              position: 'relative',
+              cursor: 'grab',
+              opacity: dragIdx === i ? 0.4 : 1,
+              outline: overIdx === i && dragIdx !== i ? `2px solid ${T.brand}` : 'none',
+              outlineOffset: 2,
+              borderRadius: T.radiusXs,
+              transition: 'opacity 0.15s, outline-color 0.15s',
+            }}
+            onMouseEnter={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '1'; }}
+            onMouseLeave={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '0'; }}>
+            <img src={img} alt="" draggable={false}
+              style={{ width: thumbSize, height: thumbSize, objectFit: 'cover', background: T.pageBg, borderRadius: T.radiusXs, border: `1px solid ${T.line}`, display: 'block' }} />
+            {/* Бейдж "1/N" — главное фото */}
+            <span style={{
+              position: 'absolute', top: 4, left: 4,
+              background: i === 0 ? T.brand : 'rgba(255,255,255,0.92)',
+              color: i === 0 ? '#fff' : T.ink,
+              fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 999,
+              letterSpacing: 0.3,
+            }}>
+              {i === 0 ? 'Главное' : `${i + 1}`}
+            </span>
+            <button type="button"
+              onClick={() => onChange(images.filter((_, idx) => idx !== i))}
+              onMouseDown={e => e.stopPropagation()}
+              style={{ position: 'absolute', top: -7, right: -7, background: T.danger, color: '#fff', border: '2px solid #fff', width: 22, height: 22, borderRadius: '50%', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s', lineHeight: 1 }}>
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      {(hint || images.length > 1) && (
+        <p style={{ fontSize: 11, color: T.faint, marginTop: 8 }}>
+          {hint || 'Перетаскивайте мышкой чтобы менять порядок. Первое фото — главное.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* ── Color variant row ─────────────────────────────────────── */
 interface ColorRowProps {
   c: { id: string; name: string; hex: string; images: string[]; stock?: number | null; material?: string | null };
@@ -147,21 +221,12 @@ function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) 
             <span style={{ fontSize: 11.5, color: T.muted }}>{c.images.length} фото</span>
           )}
         </div>
-        {c.images.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {c.images.map((img, idx) => (
-              <div key={idx} style={{ position: 'relative' }}
-                onMouseEnter={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '1'; }}
-                onMouseLeave={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '0'; }}>
-                <img src={img} alt="" style={{ width: 64, height: 64, objectFit: 'cover', background: T.pageBg, borderRadius: T.radiusXs, border: `1px solid ${T.line}` }} />
-                <button type="button" onClick={() => onChange({ images: c.images.filter((_, i) => i !== idx) })}
-                  style={{ position: 'absolute', top: -6, right: -6, background: T.danger, color: '#fff', border: '2px solid #fff', width: 20, height: 20, borderRadius: '50%', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s', lineHeight: 1 }}>
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <SortableImageGrid
+          images={c.images}
+          thumbSize={68}
+          onChange={next => onChange({ images: next })}
+          hint="Перетаскивайте чтобы менять порядок. Первое фото показывается при выборе этого цвета."
+        />
       </div>
     </div>
   );
@@ -439,21 +504,11 @@ export function AdminProductForm() {
             </button>
             <span style={{ fontSize: 12, color: T.muted }}>можно выбрать несколько</span>
           </div>
-          {form.images.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {form.images.map((img, i) => (
-                <div key={i} style={{ position: 'relative' }}
-                  onMouseEnter={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement; btn.style.opacity = '1'; }}
-                  onMouseLeave={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement; btn.style.opacity = '0'; }}>
-                  <img src={img} alt="" style={{ width: 84, height: 84, objectFit: 'cover', background: T.pageBg, borderRadius: T.radiusXs, border: `1px solid ${T.line}` }} />
-                  <button type="button" onClick={() => set('images', form.images.filter((_, idx) => idx !== i))}
-                    style={{ position: 'absolute', top: -7, right: -7, background: T.danger, color: '#fff', border: '2px solid #fff', width: 22, height: 22, borderRadius: '50%', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s' }}>
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <SortableImageGrid
+            images={form.images}
+            thumbSize={92}
+            onChange={next => set('images', next)}
+          />
         </div>
 
         {/* Colors / Variants */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
+import { downloadProductPdf } from '../lib/productPdf';
 import { useProducts } from '../hooks/useProducts';
 import { useCart } from '../hooks/useCart';
 import { useCompare } from '../hooks/useCompare';
@@ -19,6 +20,7 @@ export function ProductPage() {
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const product = products.find(p => p.id === id);
 
@@ -254,9 +256,9 @@ export function ProductPage() {
                     <div className="absolute inset-0 bg-[#9A8070] translate-x-[-101%] group-hover:translate-x-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" />
                   )}
                 </button>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <button onClick={() => toggle(product)}
-                    className={`flex-1 border text-[11px] tracking-[2px] uppercase py-4 px-6 transition-all duration-200 font-['Inter'] font-medium ${
+                    className={`border text-[11px] tracking-[2px] uppercase py-4 px-4 transition-all duration-200 font-['Inter'] font-medium ${
                       has(product.id)
                         ? 'bg-[#3D2C25] border-[#3D2C25] text-white'
                         : 'border-[#E8D9C6] text-[#9A8070] hover:border-[#3D2C25] hover:text-[#3D2C25]'
@@ -264,8 +266,23 @@ export function ProductPage() {
                     {has(product.id) ? '✓ В сравнении' : 'К сравнению'}
                   </button>
                   <button onClick={() => setConsultOpen(true)}
-                    className="flex-1 border border-[#E8D9C6] text-[#9A8070] text-[11px] tracking-[2px] uppercase py-4 px-6 hover:border-[#3D2C25] hover:text-[#3D2C25] transition-all duration-200 font-['Inter'] font-medium">
+                    className="border border-[#E8D9C6] text-[#9A8070] text-[11px] tracking-[2px] uppercase py-4 px-4 hover:border-[#3D2C25] hover:text-[#3D2C25] transition-all duration-200 font-['Inter'] font-medium">
                     Задать вопрос
+                  </button>
+                  <button onClick={async () => {
+                    if (pdfBusy) return;
+                    setPdfBusy(true);
+                    try { await downloadProductPdf(product, categories); }
+                    catch (err) { console.error('pdf failed', err); alert('Не удалось сформировать PDF. Попробуйте ещё раз.'); }
+                    finally { setPdfBusy(false); }
+                  }} disabled={pdfBusy}
+                    className="border border-[#E8D9C6] text-[#9A8070] text-[11px] tracking-[2px] uppercase py-4 px-4 hover:border-[#3D2C25] hover:text-[#3D2C25] transition-all duration-200 font-['Inter'] font-medium disabled:opacity-60 inline-flex items-center justify-center gap-2">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    {pdfBusy ? 'Генерация...' : 'Скачать PDF'}
                   </button>
                 </div>
               </div>
