@@ -52,7 +52,104 @@ function CategorySelect({ categories, value, onChange, err }: {
 const EMPTY: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = {
   sku: '', name: '', category: '', price: 0, description: '',
   images: [], material: '', color: '', dimensions: '', badges: [], relatedIds: [],
+  stock: null, colors: [],
 };
+
+function newColorId(): string {
+  return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+/* ── Color variant row ─────────────────────────────────────── */
+interface ColorRowProps {
+  c: { id: string; name: string; hex: string; images: string[]; stock?: number | null };
+  uploading: boolean;
+  onChange: (patch: Partial<ColorRowProps['c']>) => void;
+  onRemove: () => void;
+  onFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const inputBase: React.CSSProperties = {
+    border: `1px solid ${T.border}`, background: T.card,
+    padding: '9px 12px', fontSize: 13, color: T.ink, outline: 'none',
+    fontFamily: T.font, borderRadius: T.radiusSm, width: '100%', boxSizing: 'border-box',
+  };
+  const tinyLabel: React.CSSProperties = {
+    display: 'block', fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase',
+    color: T.muted, marginBottom: 6, fontWeight: 600,
+  };
+
+  return (
+    <div style={{
+      background: T.pageBg, border: `1px solid ${T.border}`,
+      borderRadius: T.radiusSm, padding: 16,
+    }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr 1fr 1fr auto', gap: 12, alignItems: 'end', marginBottom: 12 }}>
+        {/* swatch + picker */}
+        <div>
+          <label style={tinyLabel}>Свотч</label>
+          <input type="color" value={c.hex || '#888888'}
+            onChange={e => onChange({ hex: e.target.value })}
+            style={{ width: 52, height: 36, border: `1px solid ${T.border}`, borderRadius: T.radiusXs, cursor: 'pointer', padding: 0, background: 'none' }} />
+        </div>
+        <div>
+          <label style={tinyLabel}>HEX</label>
+          <input type="text" value={c.hex} onChange={e => onChange({ hex: e.target.value })}
+            placeholder="#888888" style={{ ...inputBase, fontFamily: 'monospace' }} />
+        </div>
+        <div>
+          <label style={tinyLabel}>Название</label>
+          <input type="text" value={c.name} onChange={e => onChange({ name: e.target.value })}
+            placeholder="Серый" style={inputBase} />
+        </div>
+        <div>
+          <label style={tinyLabel}>Остаток (шт.)</label>
+          <input type="number" min="0" value={c.stock ?? ''}
+            onChange={e => onChange({ stock: e.target.value === '' ? null : Number(e.target.value) })}
+            placeholder="Не учитываем" style={inputBase} />
+        </div>
+        <button type="button" onClick={onRemove}
+          style={{ background: 'none', border: 'none', color: T.danger, fontSize: 12, cursor: 'pointer', fontFamily: T.font, padding: '9px 4px' }}>
+          Удалить
+        </button>
+      </div>
+
+      {/* Images */}
+      <div>
+        <label style={tinyLabel}>Фото варианта</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFiles} style={{ display: 'none' }} />
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} style={{
+            background: T.card, color: T.brand, border: `1px solid ${T.brand}`, borderRadius: T.radiusSm,
+            padding: '7px 13px', fontSize: 12, fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: T.font,
+            opacity: uploading ? 0.6 : 1,
+          }}>
+            {uploading ? 'Загрузка...' : '+ Фото с компьютера'}
+          </button>
+          {c.images.length > 0 && (
+            <span style={{ fontSize: 11.5, color: T.muted }}>{c.images.length} фото</span>
+          )}
+        </div>
+        {c.images.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {c.images.map((img, idx) => (
+              <div key={idx} style={{ position: 'relative' }}
+                onMouseEnter={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '1'; }}
+                onMouseLeave={e => { const btn = e.currentTarget.querySelector('button') as HTMLButtonElement | null; if (btn) btn.style.opacity = '0'; }}>
+                <img src={img} alt="" style={{ width: 64, height: 64, objectFit: 'cover', background: T.pageBg, borderRadius: T.radiusXs, border: `1px solid ${T.line}` }} />
+                <button type="button" onClick={() => onChange({ images: c.images.filter((_, i) => i !== idx) })}
+                  style={{ position: 'absolute', top: -6, right: -6, background: T.danger, color: '#fff', border: '2px solid #fff', width: 20, height: 20, borderRadius: '50%', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s', lineHeight: 1 }}>
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function AdminProductForm() {
   const { id } = useParams<{ id: string }>();
@@ -69,6 +166,8 @@ export function AdminProductForm() {
       images: existing.images, material: existing.material || '',
       color: existing.color || '', dimensions: existing.dimensions || '',
       badges: existing.badges, relatedIds: existing.relatedIds || [],
+      stock: existing.stock ?? null,
+      colors: existing.colors ?? [],
     } : { ...EMPTY }
   );
   const [imageUrl, setImageUrl] = useState('');
@@ -107,6 +206,32 @@ export function AdminProductForm() {
     if (rid && !(form.relatedIds || []).includes(rid)) set('relatedIds', [...(form.relatedIds || []), rid]);
   };
   const removeRelated = (rid: string) => set('relatedIds', (form.relatedIds || []).filter(x => x !== rid));
+
+  /* ── Цветовые варианты ───────────────────────────────────── */
+  const colors = form.colors || [];
+  const updateColor = (cid: string, patch: Partial<typeof colors[number]>) =>
+    set('colors', colors.map(c => c.id === cid ? { ...c, ...patch } : c));
+  const addColor = () => set('colors', [...colors, { id: newColorId(), name: '', hex: '#888888', images: [], stock: null }]);
+  const removeColor = (cid: string) => set('colors', colors.filter(c => c.id !== cid));
+
+  const [uploadingColor, setUploadingColor] = useState<string | null>(null);
+  const handleColorFiles = async (cid: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploadingColor(cid);
+    try {
+      const folder = `products/${form.sku || existing?.id || 'new'}/colors/${cid}`;
+      const urls = await Promise.all(files.map(f => uploadImage(f, folder, 1400)));
+      const current = colors.find(c => c.id === cid);
+      if (current) updateColor(cid, { images: [...current.images, ...urls] });
+    } catch (err) {
+      console.error('color upload failed', err);
+      alert('Не удалось загрузить фото варианта.');
+    } finally {
+      setUploadingColor(null);
+      e.target.value = '';
+    }
+  };
 
   const toggleBadge = (b: 'new' | 'popular' | 'sale') => {
     set('badges', form.badges.includes(b) ? form.badges.filter(x => x !== b) : [...form.badges, b]);
@@ -192,7 +317,7 @@ export function AdminProductForm() {
             {errors.name && <p style={{ fontSize: 11, color: T.danger, marginTop: 4 }}>{errors.name}</p>}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>
               <label style={label}>Цена (₸) *</label>
               <input type="number" value={form.price || ''} onChange={e => set('price', Number(e.target.value))} style={input(errors.price)} placeholder="485000" />
@@ -201,6 +326,11 @@ export function AdminProductForm() {
             <div>
               <label style={label}>Старая цена (₸)</label>
               <input type="number" value={form.oldPrice || ''} onChange={e => set('oldPrice', e.target.value ? Number(e.target.value) : undefined)} style={input()} placeholder="Опционально" />
+            </div>
+            <div>
+              <label style={label}>Остаток (шт.)</label>
+              <input type="number" min="0" value={form.stock ?? ''} onChange={e => set('stock', e.target.value === '' ? null : Number(e.target.value))} style={input()} placeholder="Пусто = не учитываем" />
+              <p style={{ fontSize: 10, color: T.faint, marginTop: 4 }}>0 — нет в наличии. Игнорируется если есть цвета.</p>
             </div>
           </div>
 
@@ -269,6 +399,41 @@ export function AdminProductForm() {
                     ×
                   </button>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Colors / Variants */}
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, borderBottom: `1px solid ${T.line}`, paddingBottom: 12 }}>
+            <div>
+              <p style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: T.muted, fontWeight: 600 }}>Цветовые варианты</p>
+              <p style={{ fontSize: 11.5, color: T.faint, marginTop: 5 }}>
+                Если есть несколько цветов — добавьте каждый с фото и остатком. У клиента появятся кружочки-свотчи.
+              </p>
+            </div>
+            <button type="button" onClick={addColor} style={{
+              background: T.card, color: T.brand, border: `1px solid ${T.brand}`, borderRadius: T.radiusSm,
+              padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.font,
+            }}>
+              + Добавить цвет
+            </button>
+          </div>
+
+          {colors.length === 0 ? (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: T.faint, fontSize: 12.5, border: `1px dashed ${T.border}`, borderRadius: T.radiusSm }}>
+              Цветовых вариантов нет. Будет использоваться остаток выше и общие фото товара.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {colors.map(c => (
+                <ColorRow key={c.id}
+                  c={c}
+                  uploading={uploadingColor === c.id}
+                  onChange={patch => updateColor(c.id, patch)}
+                  onRemove={() => removeColor(c.id)}
+                  onFiles={e => handleColorFiles(c.id, e)} />
               ))}
             </div>
           )}

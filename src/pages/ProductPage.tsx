@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
 import { useProducts } from '../hooks/useProducts';
 import { useCart } from '../hooks/useCart';
@@ -18,8 +18,17 @@ export function ProductPage() {
   const [consultOpen, setConsultOpen] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
 
   const product = products.find(p => p.id === id);
+
+  // Инициализируем выбранный цвет когда product подгрузится
+  useEffect(() => {
+    if (product && (product.colors?.length ?? 0) > 0) {
+      setSelectedColorId(prev => prev ?? product.colors![0].id);
+    }
+  }, [product]);
+
   if (!product) {
     return (
       <div className="min-h-screen pt-32 flex flex-col items-center justify-center gap-6">
@@ -36,10 +45,42 @@ export function ProductPage() {
     .map(rid => products.find(p => p.id === rid))
     .filter(Boolean) as Product[];
   const catName  = categories.find(c => c.slug === product.category)?.name;
-  const imgs     = product.images.length ? product.images : ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200'];
+
+  const productColors = product.colors || [];
+  const hasVariants = productColors.length > 0;
+  const activeColor = productColors.find(c => c.id === selectedColorId);
+  const imgs = (() => {
+    if (activeColor && activeColor.images.length > 0) return activeColor.images;
+    return product.images.length ? product.images : ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200'];
+  })();
   const discount = product.oldPrice ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) : 0;
 
+  // При смене цвета — сбрасываем активное фото
+  const pickColor = (cid: string) => {
+    setSelectedColorId(cid);
+    setActiveImg(0);
+  };
+
+  // Доступность
+  const available = (() => {
+    if (activeColor) return activeColor.stock == null || activeColor.stock > 0;
+    if (hasVariants) return productColors.some(c => c.stock == null || c.stock > 0);
+    if (product.stock == null) return true;
+    return product.stock > 0;
+  })();
+
+  const stockHint = (() => {
+    if (activeColor && activeColor.stock != null) {
+      return activeColor.stock > 0 ? `В наличии: ${activeColor.stock} шт.` : 'Нет в наличии';
+    }
+    if (!hasVariants && product.stock != null) {
+      return product.stock > 0 ? `В наличии: ${product.stock} шт.` : 'Нет в наличии';
+    }
+    return null;
+  })();
+
   const handleAddToCart = () => {
+    if (!available) return;
     add(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -123,16 +164,62 @@ export function ProductPage() {
                 </Link>
               )}
 
-              <div className="flex items-baseline gap-4 mb-8">
+              <div className="flex items-baseline gap-4 mb-2">
                 <span className="text-3xl font-['Inter'] font-bold text-[#3D2C25]">{formatPrice(product.price)}</span>
                 {product.oldPrice && (
                   <span className="text-xl text-[#9A8070] line-through font-['Inter']">{formatPrice(product.oldPrice)}</span>
                 )}
               </div>
+              {stockHint && (
+                <p className={`text-[12px] font-['Inter'] mb-8 ${available ? 'text-[#3D8059]' : 'text-[#C0392B]'}`}>
+                  {stockHint}
+                </p>
+              )}
+              {!stockHint && <div className="mb-8" />}
 
               <p className="text-[15px] text-[#9A8070] leading-relaxed mb-8 font-['Inter']">
                 {product.description}
               </p>
+
+              {/* Color picker */}
+              {hasVariants && (
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] tracking-[1.5px] uppercase text-[#9A8070] font-['Inter'] font-semibold">
+                      Цвет
+                    </p>
+                    {activeColor && (
+                      <p className="text-[12px] text-[#3D2C25] font-['Inter']">{activeColor.name}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {productColors.map(c => {
+                      const isActive = c.id === selectedColorId;
+                      const outOfStock = c.stock != null && c.stock <= 0;
+                      return (
+                        <button key={c.id} type="button"
+                          onClick={() => pickColor(c.id)}
+                          aria-label={c.name}
+                          title={`${c.name}${outOfStock ? ' — нет в наличии' : ''}`}
+                          className="relative w-9 h-9 rounded-full transition-transform duration-150 hover:scale-110"
+                          style={{
+                            background: c.hex,
+                            boxShadow: isActive
+                              ? '0 0 0 2px #fff, 0 0 0 4px #3D2C25'
+                              : '0 0 0 1px rgba(0,0,0,0.18)',
+                            opacity: outOfStock ? 0.45 : 1,
+                          }}>
+                          {outOfStock && (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <span className="block w-full h-px bg-[#3D2C25] rotate-45" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Specs grid */}
               <div className="border-t border-b border-[#E8D9C6] py-6 mb-8 grid grid-cols-2 gap-5">
@@ -150,12 +237,14 @@ export function ProductPage() {
 
               {/* Actions */}
               <div className="flex flex-col gap-3">
-                <button onClick={handleAddToCart}
-                  className="group relative bg-[#3D2C25] text-white text-[11px] tracking-[2.5px] uppercase py-4 px-8 font-['Inter'] font-bold overflow-hidden">
+                <button onClick={handleAddToCart} disabled={!available}
+                  className="group relative bg-[#3D2C25] text-white text-[11px] tracking-[2.5px] uppercase py-4 px-8 font-['Inter'] font-bold overflow-hidden disabled:bg-[#9A8070] disabled:cursor-not-allowed">
                   <span className="relative z-10 transition-colors duration-300">
-                    {added ? '✓ Добавлено в корзину' : 'В корзину'}
+                    {!available ? 'Нет в наличии' : added ? '✓ Добавлено в корзину' : 'В корзину'}
                   </span>
-                  <div className="absolute inset-0 bg-[#9A8070] translate-x-[-101%] group-hover:translate-x-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" />
+                  {available && (
+                    <div className="absolute inset-0 bg-[#9A8070] translate-x-[-101%] group-hover:translate-x-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" />
+                  )}
                 </button>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button onClick={() => toggle(product)}

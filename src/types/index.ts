@@ -1,3 +1,11 @@
+export interface ProductColor {
+  id: string;          // уникальный в рамках товара
+  name: string;        // "Серый", "Бежевый"
+  hex: string;         // "#888888" — цвет круга-свотча
+  images: string[];    // фото именно этого варианта
+  stock?: number | null; // остаток конкретного цвета (null = бесконечный)
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -11,6 +19,8 @@ export interface Product {
   color?: string;
   dimensions?: string;
   inStock?: boolean;
+  stock?: number | null;       // общий остаток (если нет цветных вариантов)
+  colors?: ProductColor[];     // если задано — товар с вариантами цветов
   badges: Array<'new' | 'popular' | 'sale'>;
   relatedIds?: string[];
   createdAt: string;

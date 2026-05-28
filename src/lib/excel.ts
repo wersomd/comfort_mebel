@@ -173,3 +173,73 @@ export function getExcelTemplate(): void {
   XLSX.utils.book_append_sheet(wb, ws, 'Товары');
   XLSX.writeFile(wb, 'comfort_import_template.xlsx');
 }
+
+/** Скачать все товары в Excel — две вкладки: «Товары» + «Цветные варианты» */
+export function exportProductsToExcel(products: Product[], categories: Array<{ slug: string; name: string }> = []): void {
+  const catName = (slug: string) => categories.find(c => c.slug === slug)?.name || slug;
+
+  // Главная вкладка — основные поля
+  const productsSheet = XLSX.utils.aoa_to_sheet([
+    [
+      'Артикул', 'Название', 'Категория', 'Цена', 'Старая цена',
+      'Описание', 'Материал', 'Цвет', 'Размер',
+      'Остаток', 'Цветовых вариантов', 'Фото (через ;)',
+      'Метки', 'Создан', 'Обновлён',
+    ],
+    ...products.map(p => [
+      p.sku,
+      p.name,
+      catName(p.category),
+      p.price,
+      p.oldPrice ?? '',
+      p.description ?? '',
+      p.material ?? '',
+      p.color ?? '',
+      p.dimensions ?? '',
+      p.stock ?? '',
+      p.colors?.length ?? 0,
+      (p.images || []).join('; '),
+      (p.badges || []).join(', '),
+      p.createdAt ? new Date(p.createdAt).toLocaleDateString('ru-RU') : '',
+      p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('ru-RU') : '',
+    ]),
+  ]);
+
+  // Ширина колонок
+  productsSheet['!cols'] = [
+    { wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 10 }, { wch: 12 },
+    { wch: 40 }, { wch: 16 }, { wch: 14 }, { wch: 16 },
+    { wch: 9 },  { wch: 9 },  { wch: 40 },
+    { wch: 14 }, { wch: 12 }, { wch: 12 },
+  ];
+
+  // Вторая вкладка — все цветовые варианты построчно
+  const colorRows: (string | number)[][] = [
+    ['Артикул товара', 'Товар', 'Цвет', 'HEX', 'Остаток', 'Фото (через ;)'],
+  ];
+  for (const p of products) {
+    for (const c of p.colors || []) {
+      colorRows.push([
+        p.sku,
+        p.name,
+        c.name,
+        c.hex,
+        c.stock ?? '',
+        (c.images || []).join('; '),
+      ]);
+    }
+  }
+  const colorsSheet = XLSX.utils.aoa_to_sheet(colorRows);
+  colorsSheet['!cols'] = [
+    { wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 10 }, { wch: 9 }, { wch: 50 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, productsSheet, 'Товары');
+  if (colorRows.length > 1) {
+    XLSX.utils.book_append_sheet(wb, colorsSheet, 'Цветные варианты');
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `comfort-products-${today}.xlsx`);
+}

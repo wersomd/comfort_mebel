@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useProducts } from '../../hooks/useProducts';
 import { useCategories } from '../../hooks/useCategories';
 import { formatPrice } from '../../lib/utils';
+import { exportProductsToExcel } from '../../lib/excel';
 import { T } from '../ui';
 
 export function AdminProducts() {
@@ -47,15 +48,36 @@ export function AdminProducts() {
           <h1 style={{ fontSize: 26, fontWeight: 600, color: T.ink, marginBottom: 5, letterSpacing: -0.3 }}>Товары</h1>
           <p style={{ fontSize: 13.5, color: T.muted }}>{products.length} позиций в каталоге</p>
         </div>
-        <Link to="/admin/products/new" style={{
-          background: T.brand, color: '#FFFFFF', textDecoration: 'none',
-          fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
-          padding: '12px 22px', fontWeight: 600, borderRadius: T.radiusSm, transition: 'background 0.2s',
-        }}
-          onMouseEnter={e => (e.currentTarget.style.background = T.brandHover)}
-          onMouseLeave={e => (e.currentTarget.style.background = T.brand)}>
-          + Добавить товар
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => exportProductsToExcel(products, categories)}
+            disabled={products.length === 0}
+            style={{
+              background: T.card, color: T.brand, border: `1px solid ${T.brand}`,
+              borderRadius: T.radiusSm,
+              fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
+              padding: '11px 18px', fontWeight: 600,
+              cursor: products.length === 0 ? 'not-allowed' : 'pointer',
+              fontFamily: T.font, opacity: products.length === 0 ? 0.5 : 1,
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+            }}
+            title={`Скачать ${products.length} товаров в Excel`}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Скачать Excel
+          </button>
+          <Link to="/admin/products/new" style={{
+            background: T.brand, color: '#FFFFFF', textDecoration: 'none',
+            fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
+            padding: '12px 22px', fontWeight: 600, borderRadius: T.radiusSm, transition: 'background 0.2s',
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = T.brandHover)}
+            onMouseLeave={e => (e.currentTarget.style.background = T.brand)}>
+            + Добавить товар
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router';
-import type { Product } from '../types';
+import type { Product, ProductColor } from '../types';
 import { formatPrice } from '../lib/utils';
 import { useCart } from '../hooks/useCart';
 import { useCompare } from '../hooks/useCompare';
@@ -11,17 +11,56 @@ function discountPercent(price: number, oldPrice: number) {
   return Math.round(((oldPrice - price) / oldPrice) * 100);
 }
 
+/** Доступен ли товар к покупке (учитываем выбранный цвет либо общий остаток) */
+function isAvailable(p: Product, color?: ProductColor): boolean {
+  if (color) return color.stock == null || color.stock > 0;
+  if (p.colors && p.colors.length > 0) return p.colors.some(c => c.stock == null || c.stock > 0);
+  if (p.stock == null) return true;
+  return p.stock > 0;
+}
+
 export function ProductCard({ product, index = 0 }: Props) {
-  const [hovered, setHovered]   = useState(false);
-  const [added, setAdded]       = useState(false);
-  const [imgIndex, setImgIndex] = useState(0);
+  const [hovered, setHovered]       = useState(false);
+  const [added, setAdded]           = useState(false);
+  const [imgIndex, setImgIndex]     = useState(0);
+  const [selectedColor, setSelectedColor] = useState<string | null>(
+    product.colors && product.colors.length > 0 ? product.colors[0].id : null
+  );
+
   const { add } = useCart();
   const { has, toggle, isFull } = useCompare();
   const inCompare = has(product.id);
 
+  // Источник фото зависит от выбранного цвета
+  const activeColor = useMemo(
+    () => (product.colors || []).find(c => c.id === selectedColor),
+    [product.colors, selectedColor]
+  );
+  const images = useMemo(() => {
+    const fromColor = activeColor && activeColor.images.length > 0 ? activeColor.images : null;
+    return fromColor || product.images;
+  }, [activeColor, product.images]);
+
+  const img      = images[imgIndex] || images[0] || '';
+  const discount = product.oldPrice ? discountPercent(product.price, product.oldPrice) : 0;
+  const available = isAvailable(product, activeColor);
+
+  const goImage = (e: React.MouseEvent, dir: number) => {
+    e.preventDefault(); e.stopPropagation();
+    setImgIndex(i => (i + dir + images.length) % images.length);
+  };
+
+  const pickColor = (e: React.MouseEvent, cid: string) => {
+    e.preventDefault(); e.stopPropagation();
+    setSelectedColor(cid);
+    setImgIndex(0);
+  };
+
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    add(product); setAdded(true);
+    if (!available) return;
+    add(product);
+    setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   };
 
@@ -30,14 +69,7 @@ export function ProductCard({ product, index = 0 }: Props) {
     toggle(product);
   };
 
-  const images   = product.images;
-  const img      = images[imgIndex] || '';
-  const discount = product.oldPrice ? discountPercent(product.price, product.oldPrice) : 0;
-
-  const goImage = (e: React.MouseEvent, dir: number) => {
-    e.preventDefault(); e.stopPropagation();
-    setImgIndex(i => (i + dir + images.length) % images.length);
-  };
+  const colors = product.colors || [];
 
   return (
     <Link to={`/product/${product.id}`} className="group block"
@@ -49,7 +81,7 @@ export function ProductCard({ product, index = 0 }: Props) {
         onMouseLeave={() => setHovered(false)}>
         {img ? (
           <img src={img} alt={product.name} loading="lazy"
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500"
             style={{ transform: hovered ? 'scale(1.06)' : 'scale(1)' }} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -118,13 +150,18 @@ export function ProductCard({ product, index = 0 }: Props) {
               Хит
             </span>
           )}
+          {!available && (
+            <span className="bg-white/95 text-[#3D2C25] text-[9px] tracking-[1.5px] uppercase px-2.5 py-1 font-['Inter'] font-bold">
+              Нет в наличии
+            </span>
+          )}
         </div>
 
         {/* Add to cart */}
-        <button onClick={handleAdd}
-          className="absolute bottom-0 left-0 right-0 bg-[#3D2C25] text-white text-[10px] tracking-[2px] uppercase py-3.5 font-['Inter'] font-bold transition-all duration-300 hover:bg-[#9A8070]"
+        <button onClick={handleAdd} disabled={!available}
+          className="absolute bottom-0 left-0 right-0 bg-[#3D2C25] text-white text-[10px] tracking-[2px] uppercase py-3.5 font-['Inter'] font-bold transition-all duration-300 hover:bg-[#9A8070] disabled:bg-[#9A8070] disabled:cursor-not-allowed"
           style={{ transform: hovered ? 'translateY(0)' : 'translateY(100%)', opacity: hovered ? 1 : 0 }}>
-          {added ? '✓ Добавлено' : 'В корзину'}
+          {!available ? 'Нет в наличии' : added ? '✓ Добавлено' : 'В корзину'}
         </button>
       </div>
 
@@ -135,6 +172,40 @@ export function ProductCard({ product, index = 0 }: Props) {
           {product.name}
         </h3>
         {product.material && <p className="text-[12px] text-[#9A8070] mb-1">{product.material}</p>}
+
+        {/* Color swatches */}
+        {colors.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-2 mb-1.5">
+            {colors.slice(0, 6).map(c => {
+              const isActive = c.id === selectedColor;
+              const outOfStock = c.stock != null && c.stock <= 0;
+              return (
+                <button key={c.id} type="button"
+                  onClick={e => pickColor(e, c.id)}
+                  aria-label={c.name}
+                  title={`${c.name}${outOfStock ? ' — нет в наличии' : ''}`}
+                  className="relative w-5 h-5 rounded-full transition-transform duration-150 hover:scale-110"
+                  style={{
+                    background: c.hex,
+                    boxShadow: isActive
+                      ? '0 0 0 1.5px #fff, 0 0 0 3px #3D2C25'
+                      : '0 0 0 1px rgba(0,0,0,0.15)',
+                    opacity: outOfStock ? 0.45 : 1,
+                  }}>
+                  {outOfStock && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="block w-full h-px bg-[#3D2C25] rotate-45" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {colors.length > 6 && (
+              <span className="text-[10px] text-[#9A8070] font-['Inter'] ml-1">+{colors.length - 6}</span>
+            )}
+          </div>
+        )}
+
         <div className="flex items-baseline gap-2">
           <span className="text-[14px] font-['Inter'] font-semibold text-[#3D2C25]">{formatPrice(product.price)}</span>
           {product.oldPrice && (
