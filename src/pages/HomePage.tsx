@@ -92,19 +92,27 @@ export function HomePage() {
         </Reveal>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10 lg:gap-x-10 lg:gap-y-14">
-          {topCats.map((cat, i) => (
-            <Reveal key={cat.id} delay={i * 60}>
-              <Link to={`/catalog?category=${cat.slug}`} className="group flex flex-col items-center">
-                <div className="w-full h-48 lg:h-64 flex items-center justify-center overflow-hidden">
-                  <img src={heroSofa} alt={cat.name}
-                    className="max-h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.06]" />
-                </div>
-                <h3 className="font-['Playfair_Display'] text-[15px] lg:text-[17px] text-[#3D2C25] font-semibold mt-4 group-hover:text-[#9A8070] transition-colors duration-200">
-                  {cat.name}
-                </h3>
-              </Link>
-            </Reveal>
-          ))}
+          {topCats.map((cat, i) => {
+            const photo = cat.background || cat.image;
+            return (
+              <Reveal key={cat.id} delay={i * 60}>
+                <Link to={`/catalog?category=${cat.slug}`} className="group flex flex-col items-center">
+                  <div className="w-full h-48 lg:h-64 overflow-hidden bg-[#F5F5F5] flex items-center justify-center">
+                    {photo ? (
+                      <img src={photo} alt={cat.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
+                    ) : (
+                      <img src={heroSofa} alt={cat.name}
+                        className="max-h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.06]" />
+                    )}
+                  </div>
+                  <h3 className="font-['Playfair_Display'] text-[15px] lg:text-[17px] text-[#3D2C25] font-semibold mt-4 group-hover:text-[#9A8070] transition-colors duration-200">
+                    {cat.name}
+                  </h3>
+                </Link>
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
