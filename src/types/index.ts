@@ -3,7 +3,8 @@ export interface ProductColor {
   name: string;        // "Серый", "Бежевый"
   hex: string;         // "#888888" — цвет круга-свотча
   images: string[];    // фото именно этого варианта
-  stock?: number | null; // остаток конкретного цвета (null = бесконечный)
+  stock?: number | null;     // остаток конкретного цвета (null = не учитываем)
+  material?: string | null;  // материал именно этого варианта (например "Велюр" / "Кожа")
 }
 
 export interface Product {

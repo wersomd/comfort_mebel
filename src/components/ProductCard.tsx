@@ -171,7 +171,9 @@ export function ProductCard({ product, index = 0 }: Props) {
         <h3 className="text-[15px] font-['Playfair_Display'] text-[#3D2C25] group-hover:text-[#9A8070] transition-colors duration-200 leading-snug mb-1">
           {product.name}
         </h3>
-        {product.material && <p className="text-[12px] text-[#9A8070] mb-1">{product.material}</p>}
+        {(activeColor?.material || product.material) && (
+          <p className="text-[12px] text-[#9A8070] mb-1">{activeColor?.material || product.material}</p>
+        )}
 
         {/* Color swatches */}
         {colors.length > 0 && (

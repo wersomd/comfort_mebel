@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import { useProducts } from '../../hooks/useProducts';
 import { useCategories } from '../../hooks/useCategories';
@@ -25,21 +25,27 @@ function CategorySelect({ categories, value, onChange, err }: {
     outline: 'none', fontFamily: T.font, cursor: 'pointer', borderRadius: T.radiusSm,
   };
 
+  // Выбран ли parent (для текущего value)?
+  const parent = categories.find(c => c.id === selParent);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <select value={selParent} onChange={e => {
-        setSelParent(e.target.value);
-        const kids = categories.filter(c => c.parentId === e.target.value);
-        const parent = categories.find(c => c.id === e.target.value);
-        if (kids.length === 0 && parent) onChange(parent.slug);
-        else onChange('');
+        const pid = e.target.value;
+        setSelParent(pid);
+        // Сразу подставляем slug родителя — подкатегорию можно выбрать опционально
+        const p = categories.find(c => c.id === pid);
+        onChange(p ? p.slug : '');
       }} style={sel}>
         <option value="">Выберите раздел...</option>
         {parents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
       </select>
       {children.length > 0 && (
-        <select value={value} onChange={e => onChange(e.target.value)} style={sel}>
-          <option value="">Подкатегория...</option>
+        <select
+          value={parent && value === parent.slug ? '' : value}
+          onChange={e => onChange(e.target.value || (parent ? parent.slug : ''))}
+          style={sel}>
+          <option value="">Подкатегория (опционально)</option>
           {children.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}
         </select>
       )}
@@ -61,7 +67,7 @@ function newColorId(): string {
 
 /* ── Color variant row ─────────────────────────────────────── */
 interface ColorRowProps {
-  c: { id: string; name: string; hex: string; images: string[]; stock?: number | null };
+  c: { id: string; name: string; hex: string; images: string[]; stock?: number | null; material?: string | null };
   uploading: boolean;
   onChange: (patch: Partial<ColorRowProps['c']>) => void;
   onRemove: () => void;
@@ -85,8 +91,8 @@ function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) 
       background: T.pageBg, border: `1px solid ${T.border}`,
       borderRadius: T.radiusSm, padding: 16,
     }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr 1fr 1fr auto', gap: 12, alignItems: 'end', marginBottom: 12 }}>
-        {/* swatch + picker */}
+      {/* Первый ряд: свотч + hex + название + остаток + удалить */}
+      <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr 1.4fr 1fr auto', gap: 12, alignItems: 'end', marginBottom: 12 }}>
         <div>
           <label style={tinyLabel}>Свотч</label>
           <input type="color" value={c.hex || '#888888'}
@@ -99,7 +105,7 @@ function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) 
             placeholder="#888888" style={{ ...inputBase, fontFamily: 'monospace' }} />
         </div>
         <div>
-          <label style={tinyLabel}>Название</label>
+          <label style={tinyLabel}>Название цвета</label>
           <input type="text" value={c.name} onChange={e => onChange({ name: e.target.value })}
             placeholder="Серый" style={inputBase} />
         </div>
@@ -113,6 +119,16 @@ function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) 
           style={{ background: 'none', border: 'none', color: T.danger, fontSize: 12, cursor: 'pointer', fontFamily: T.font, padding: '9px 4px' }}>
           Удалить
         </button>
+      </div>
+
+      {/* Второй ряд: материал именно этого варианта */}
+      <div style={{ marginBottom: 12 }}>
+        <label style={tinyLabel}>Материал этого варианта (необязательно)</label>
+        <input type="text"
+          value={c.material ?? ''}
+          onChange={e => onChange({ material: e.target.value || null })}
+          placeholder="Например: Велюр. Если пусто — берётся материал товара выше."
+          style={inputBase} />
       </div>
 
       {/* Images */}
@@ -154,26 +170,41 @@ function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) 
 export function AdminProductForm() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === 'new' || !id;
-  const { products, create, update } = useProducts();
+  const { products, loading, create, update } = useProducts();
   const { categories } = useCategories();
   const navigate = useNavigate();
 
   const existing = products.find(p => p.id === id);
-  const [form, setForm] = useState<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>(
-    existing ? {
-      sku: existing.sku, name: existing.name, category: existing.category,
-      price: existing.price, oldPrice: existing.oldPrice, description: existing.description,
-      images: existing.images, material: existing.material || '',
-      color: existing.color || '', dimensions: existing.dimensions || '',
-      badges: existing.badges, relatedIds: existing.relatedIds || [],
-      stock: existing.stock ?? null,
-      colors: existing.colors ?? [],
-    } : { ...EMPTY }
-  );
+  const [form, setForm] = useState<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>({ ...EMPTY });
+  const [hydrated, setHydrated] = useState(isNew);
   const [imageUrl, setImageUrl] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Когда товары загрузились — заполняем форму данными редактируемого товара
+  useEffect(() => {
+    if (isNew || hydrated) return;
+    if (existing) {
+      setForm({
+        sku: existing.sku,
+        name: existing.name,
+        category: existing.category,
+        price: existing.price,
+        oldPrice: existing.oldPrice,
+        description: existing.description,
+        images: existing.images,
+        material: existing.material || '',
+        color: existing.color || '',
+        dimensions: existing.dimensions || '',
+        badges: existing.badges,
+        relatedIds: existing.relatedIds || [],
+        stock: existing.stock ?? null,
+        colors: existing.colors ?? [],
+      });
+      setHydrated(true);
+    }
+  }, [existing, isNew, hydrated]);
 
   const set = (key: keyof typeof form, value: unknown) => {
     setForm(f => ({ ...f, [key]: value }));
@@ -211,7 +242,7 @@ export function AdminProductForm() {
   const colors = form.colors || [];
   const updateColor = (cid: string, patch: Partial<typeof colors[number]>) =>
     set('colors', colors.map(c => c.id === cid ? { ...c, ...patch } : c));
-  const addColor = () => set('colors', [...colors, { id: newColorId(), name: '', hex: '#888888', images: [], stock: null }]);
+  const addColor = () => set('colors', [...colors, { id: newColorId(), name: '', hex: '#888888', images: [], stock: null, material: null }]);
   const removeColor = (cid: string) => set('colors', colors.filter(c => c.id !== cid));
 
   const [uploadingColor, setUploadingColor] = useState<string | null>(null);
@@ -284,6 +315,25 @@ export function AdminProductForm() {
     borderRadius: T.radiusSm, transition: 'background 0.2s',
   };
 
+  // При редактировании: пока товары грузятся (или ещё не нашли нужный) — скелетон
+  if (!isNew && !hydrated) {
+    return (
+      <div style={{ padding: 40, maxWidth: 780, fontFamily: T.font }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 26 }}>
+          <Link to="/admin/products" style={{ color: T.muted, textDecoration: 'none', fontSize: 13 }}>← Назад</Link>
+          <h1 style={{ fontSize: 25, fontWeight: 600, color: T.ink, letterSpacing: -0.3 }}>Загрузка...</h1>
+        </div>
+        {!loading && !existing ? (
+          <p style={{ color: T.muted, fontSize: 13 }}>
+            Товар не найден. <Link to="/admin/products" style={{ color: T.brand }}>Вернуться к списку</Link>
+          </p>
+        ) : (
+          <div style={{ height: 200, background: T.card, border: `1px solid ${T.border}`, borderRadius: T.radius, animation: 'pulse 1.4s ease-in-out infinite' }} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 40, maxWidth: 780, fontFamily: T.font }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 26 }}>
@@ -341,14 +391,13 @@ export function AdminProductForm() {
           </div>
         </div>
 
-        {/* Specs */}
+        {/* Specs — без поля Цвет (он редактируется в "Цветовые варианты" ниже) */}
         <div style={card}>
           <p style={sectionHead}>Характеристики</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {[
-              { key: 'material', label: 'Материал', ph: 'Велюр' },
-              { key: 'color',    label: 'Цвет',     ph: 'Серый' },
-              { key: 'dimensions', label: 'Размер', ph: '240×95×85 см' },
+              { key: 'material',   label: 'Материал', ph: 'Велюр' },
+              { key: 'dimensions', label: 'Размер',   ph: '240×95×85 см' },
             ].map(f => (
               <div key={f.key}>
                 <label style={label}>{f.label}</label>
@@ -358,6 +407,9 @@ export function AdminProductForm() {
               </div>
             ))}
           </div>
+          <p style={{ fontSize: 11, color: T.faint, marginTop: 10 }}>
+            Цвет задаётся в блоке «Цветовые варианты» ниже.
+          </p>
         </div>
 
         {/* Images */}

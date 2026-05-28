@@ -11,7 +11,7 @@ import type { Product } from '../types';
 
 export function ProductPage() {
   const { id } = useParams<{ id: string }>();
-  const { products } = useProducts();
+  const { products, loading } = useProducts();
   const { add } = useCart();
   const { has, toggle } = useCompare();
   const { categories } = useCategories();
@@ -28,6 +28,15 @@ export function ProductPage() {
       setSelectedColorId(prev => prev ?? product.colors![0].id);
     }
   }, [product]);
+
+  // Пока товары грузятся — скелетон, чтобы не показывать "Товар не найден"
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-32 flex items-center justify-center">
+        <div className="text-[#9A8070] text-[13px] font-['Inter']">Загрузка...</div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -221,12 +230,11 @@ export function ProductPage() {
                 </div>
               )}
 
-              {/* Specs grid */}
+              {/* Specs grid — без цвета (он выбирается ниже) */}
               <div className="border-t border-b border-[#E8D9C6] py-6 mb-8 grid grid-cols-2 gap-5">
                 {[
-                  { key: 'material', label: 'Материал', value: product.material },
-                  { key: 'color',    label: 'Цвет',     value: product.color },
-                  { key: 'dimensions', label: 'Размер', value: product.dimensions },
+                  { key: 'material',   label: 'Материал', value: activeColor?.material || product.material },
+                  { key: 'dimensions', label: 'Размер',   value: product.dimensions },
                 ].filter(s => s.value).map(s => (
                   <div key={s.key}>
                     <p className="text-[10px] tracking-[1.5px] uppercase text-[#9A8070] mb-1 font-['Inter'] font-semibold">{s.label}</p>
