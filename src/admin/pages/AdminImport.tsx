@@ -93,7 +93,7 @@ export function AdminImport() {
       <div style={{ ...card, padding: 20, marginBottom: 16 }}>
         <p style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: T.muted, fontWeight: 600, marginBottom: 12 }}>Ожидаемые колонки</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {['Артикул', 'Название *', 'Категория', 'Цена *', 'Описание', 'Материал', 'Цвет', 'Размер', 'Изображение'].map(col => (
+          {['Артикул', 'Название *', 'Категория', 'Цена *', 'Описание', 'Материал', 'Цвет', 'Размер', 'Изображение', 'Остаток'].map(col => (
             <span key={col} style={{
               fontSize: 11, padding: '5px 11px', fontFamily: T.font, borderRadius: T.radiusXs,
               background: col.includes('*') ? T.brand : T.pageBg,

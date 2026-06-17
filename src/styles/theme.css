@@ -84,6 +84,28 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
+/* Hero scroll-down hint — мягкое «дыхание» вниз */
+@keyframes scrollHint {
+  0%, 100% { transform: translateY(0);     opacity: 0.45; }
+  50%      { transform: translateY(7px);   opacity: 1;    }
+}
+/* Шеврон догоняет с задержкой — эффект «стекания» вниз */
+@keyframes scrollHintChevron {
+  0%, 100% { transform: translateY(-3px); opacity: 0.3; }
+  50%      { transform: translateY(3px);  opacity: 1;   }
+}
+
+.anim-scroll-hint         { animation: scrollHint 1.9s ease-in-out infinite; }
+.anim-scroll-hint-chevron { animation: scrollHintChevron 1.9s ease-in-out infinite; }
+
+/* Плавающая WhatsApp-кнопка — мягкое пульсирующее кольцо */
+@keyframes waPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(61, 44, 37, 0.45); }
+  70%  { box-shadow: 0 0 0 14px rgba(61, 44, 37, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(61, 44, 37, 0); }
+}
+.anim-wa-pulse { animation: waPulse 2.4s ease-out infinite; }
+
 .anim-fade-up  { animation: fadeUp  0.65s cubic-bezier(0.22,1,0.36,1) both; }
 .anim-fade-in  { animation: fadeIn  0.5s ease both; }
 .anim-scale-up { animation: scaleUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
@@ -91,6 +113,10 @@
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-scroll-hint, .anim-scroll-hint-chevron, .anim-wa-pulse { animation: none; }
+}
 
 /* ── Base ──────────────────────────────────────────────── */
 @layer base {

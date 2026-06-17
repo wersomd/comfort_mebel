@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
-import { downloadProductPdf } from '../lib/productPdf';
 import { useProducts } from '../hooks/useProducts';
 import { useCart } from '../hooks/useCart';
 import { useCompare } from '../hooks/useCompare';
@@ -272,7 +271,10 @@ export function ProductPage() {
                   <button onClick={async () => {
                     if (pdfBusy) return;
                     setPdfBusy(true);
-                    try { await downloadProductPdf(product, categories); }
+                    try {
+                      const { downloadProductPdf } = await import('../lib/productPdf');
+                      await downloadProductPdf(product, categories);
+                    }
                     catch (err) { console.error('pdf failed', err); alert('Не удалось сформировать PDF. Попробуйте ещё раз.'); }
                     finally { setPdfBusy(false); }
                   }} disabled={pdfBusy}

@@ -1,23 +1,27 @@
-import { createBrowserRouter } from 'react-router';
+import { lazy, Suspense } from 'react';
+import { createBrowserRouter, Outlet } from 'react-router';
 import { Header } from '../components/layout/Header';
 import { Footer } from '../components/layout/Footer';
 import { ScrollToTop } from '../components/ScrollToTop';
-import { Outlet } from 'react-router';
+import { WhatsAppButton } from '../components/WhatsAppButton';
 import { HomePage } from '../pages/HomePage';
 import { CatalogPage } from '../pages/CatalogPage';
 import { ProductPage } from '../pages/ProductPage';
 import { CartPage } from '../pages/CartPage';
 import { AboutPage } from '../pages/AboutPage';
 import { ComparePage } from '../pages/ComparePage';
-import { AdminLogin } from '../admin/pages/AdminLogin';
-import { AdminLayout } from '../admin/components/AdminLayout';
-import { AdminDashboard } from '../admin/pages/AdminDashboard';
-import { AdminProducts } from '../admin/pages/AdminProducts';
-import { AdminProductForm } from '../admin/pages/AdminProductForm';
-import { AdminCategories } from '../admin/pages/AdminCategories';
-import { AdminImport } from '../admin/pages/AdminImport';
-import { AdminLeads } from '../admin/pages/AdminLeads';
 import { ProtectedRoute } from '../admin/components/ProtectedRoute';
+
+// Админка грузится лениво отдельным чанком — её тяжёлые зависимости (xlsx и т.п.)
+// не попадают в основной бандл, который качает каждый посетитель витрины.
+const AdminLogin       = lazy(() => import('../admin/pages/AdminLogin').then(m => ({ default: m.AdminLogin })));
+const AdminLayout      = lazy(() => import('../admin/components/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminDashboard   = lazy(() => import('../admin/pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AdminProducts    = lazy(() => import('../admin/pages/AdminProducts').then(m => ({ default: m.AdminProducts })));
+const AdminProductForm = lazy(() => import('../admin/pages/AdminProductForm').then(m => ({ default: m.AdminProductForm })));
+const AdminCategories  = lazy(() => import('../admin/pages/AdminCategories').then(m => ({ default: m.AdminCategories })));
+const AdminImport      = lazy(() => import('../admin/pages/AdminImport').then(m => ({ default: m.AdminImport })));
+const AdminLeads       = lazy(() => import('../admin/pages/AdminLeads').then(m => ({ default: m.AdminLeads })));
 
 function PublicLayout() {
   return (
@@ -28,7 +32,21 @@ function PublicLayout() {
         <Outlet />
       </div>
       <Footer />
+      <WhatsAppButton />
     </div>
+  );
+}
+
+// Единая Suspense-граница над всей админкой с аккуратным лоадером.
+function AdminBoundary() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <div className="text-[#9A8070] text-[13px] font-['Inter']">Загрузка…</div>
+      </div>
+    }>
+      <Outlet />
+    </Suspense>
   );
 }
 
@@ -59,22 +77,28 @@ export const router = createBrowserRouter([
       { path: '/compare', Component: ComparePage },
     ],
   },
-  // Admin — login (public)
-  { path: '/admin', Component: AdminLogin },
-  // Admin — protected
+  // Admin — лениво, под единой Suspense-границей
   {
-    element: <ProtectedRoute />,
+    element: <AdminBoundary />,
     children: [
+      // login (public)
+      { path: '/admin', Component: AdminLogin },
+      // protected
       {
-        element: <AdminLayout />,
+        element: <ProtectedRoute />,
         children: [
-          { path: '/admin/dashboard', Component: AdminDashboard },
-          { path: '/admin/products', Component: AdminProducts },
-          { path: '/admin/products/new', Component: AdminProductForm },
-          { path: '/admin/products/:id', Component: AdminProductForm },
-          { path: '/admin/categories', Component: AdminCategories },
-          { path: '/admin/leads', Component: AdminLeads },
-          { path: '/admin/import', Component: AdminImport },
+          {
+            element: <AdminLayout />,
+            children: [
+              { path: '/admin/dashboard', Component: AdminDashboard },
+              { path: '/admin/products', Component: AdminProducts },
+              { path: '/admin/products/new', Component: AdminProductForm },
+              { path: '/admin/products/:id', Component: AdminProductForm },
+              { path: '/admin/categories', Component: AdminCategories },
+              { path: '/admin/leads', Component: AdminLeads },
+              { path: '/admin/import', Component: AdminImport },
+            ],
+          },
         ],
       },
     ],

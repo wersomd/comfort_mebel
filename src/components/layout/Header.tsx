@@ -117,7 +117,6 @@ export function Header() {
                           <div key={cat.id} className="group">
                             <Link to={`/catalog?category=${cat.slug}`} onClick={() => setCatMenu(false)}
                               className="inline-flex items-center gap-2 text-[13px] tracking-[0.5px] font-['Inter'] font-semibold text-[#3D2C25] hover:text-[#9A8070] transition-colors mb-3">
-                              {cat.emoji && <span className="text-[15px]">{cat.emoji}</span>}
                               <span>{cat.name}</span>
                             </Link>
                             {subs.length > 0 && (
@@ -274,7 +273,6 @@ export function Header() {
                       <div key={cat.id} className="border-t border-[#F0E6D9]/70 pt-1.5 pb-1.5">
                         <Link to={`/catalog?category=${cat.slug}`}
                           className="flex items-center gap-2 py-2 text-[12px] text-[#3D2C25] hover:text-[#9A8070] font-['Inter'] font-medium">
-                          {cat.emoji && <span>{cat.emoji}</span>}
                           {cat.name}
                         </Link>
                         {subs.length > 0 && (

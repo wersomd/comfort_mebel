@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { Product } from '../types';
-import { generateCatalogPDF } from '../lib/pdf';
 
 interface Props {
   products: Product[];
@@ -13,6 +12,7 @@ export function CatalogPDFButton({ products }: Props) {
     if (loading || products.length === 0) return;
     setLoading(true);
     try {
+      const { generateCatalogPDF } = await import('../lib/pdf');
       await generateCatalogPDF(products);
     } finally {
       setLoading(false);

@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { ProductCard } from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
-import heroSofa from '../assets/hero-bg.png';
+import heroSofa from '../assets/hero-bg.webp';
 
 function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -34,6 +34,10 @@ export function HomePage() {
     const t = setTimeout(() => setHeroAnim(true), 120);
     return () => clearTimeout(t);
   }, []);
+
+  const scrollToCollections = () => {
+    document.getElementById('collections')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const newProducts     = products.filter(p => p.badges.includes('new')).slice(0, 4);
   const popularProducts = products.filter(p => p.badges.includes('popular')).slice(0, 8);
@@ -79,11 +83,31 @@ export function HomePage() {
               }}
             />
           </div>
+
+          {/* Scroll-down hint — подсказка, что снизу есть каталог */}
+          <button
+            onClick={scrollToCollections}
+            aria-label="Смотреть каталог"
+            className="group absolute left-1/2 -translate-x-1/2 bottom-7 lg:bottom-9 z-10 flex flex-col items-center gap-2"
+            style={{
+              opacity: heroAnim ? 1 : 0,
+              transition: 'opacity 1s ease 1.3s',
+            }}
+          >
+            <span className="text-[10px] tracking-[2.5px] uppercase text-[#9A8070] group-hover:text-[#3D2C25] transition-colors duration-200 font-['Inter']">
+              Каталог
+            </span>
+            <span className="anim-scroll-hint block text-[#9A8070] group-hover:text-[#3D2C25] transition-colors duration-200">
+              <svg className="anim-scroll-hint-chevron" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
+          </button>
         </div>
       </section>
 
       {/* CATEGORIES ───────────────────────────────────────── */}
-      <section className="max-w-[1440px] mx-auto px-6 lg:px-12 py-20">
+      <section id="collections" className="max-w-[1440px] mx-auto px-6 lg:px-12 py-20 scroll-mt-20">
         <Reveal className="flex items-end justify-between mb-10">
           <h2 className="font-['Playfair_Display'] text-4xl lg:text-5xl text-[#3D2C25]">Коллекции</h2>
           <Link to="/catalog" className="text-[11px] tracking-[2px] uppercase text-[#3D2C25] hover:text-[#9A8070] transition-colors font-['Inter'] border-b border-[#E8D9C6] pb-0.5">

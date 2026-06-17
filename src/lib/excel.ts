@@ -12,7 +12,7 @@ export interface ExcelRow {
   color?: string;
   dimensions?: string;
   image?: string;
-  inStock: boolean;
+  stock: number | null;   // остаток (null = не учитываем)
 }
 
 // Стандартные алиасы колонок
@@ -26,7 +26,8 @@ const COLUMN_ALIASES: Record<string, keyof ExcelRow> = {
   цвет: 'color', color: 'color',
   размер: 'dimensions', dimensions: 'dimensions', габариты: 'dimensions',
   изображение: 'image', image: 'image', фото: 'image', url: 'image',
-  наличие: 'inStock', instock: 'inStock', 'в наличии': 'inStock',
+  остаток: 'stock', stock: 'stock', количество: 'stock', 'кол-во': 'stock',
+  наличие: 'stock', 'в наличии': 'stock',
 };
 
 // Индексы колонок МойСклад (по позиции в файле)
@@ -98,7 +99,8 @@ export function parseExcelFile(file: File): Promise<ExcelRow[]> {
               category: parseCategoryFromGroups(String(raw[MOYSKLAD_COLS.groups] ?? '')),
               price,
               description: String(raw[MOYSKLAD_COLS.description] ?? '').replace(/\r?\n/g, ' ').trim(),
-              inStock: !archived,
+              // Архивный товар → остаток 0 (нет в наличии). Иначе остаток не учитываем (null).
+              stock: archived ? 0 : null,
             });
           } else {
             // === Стандартный формат (наш шаблон) ===
@@ -110,9 +112,15 @@ export function parseExcelFile(file: File): Promise<ExcelRow[]> {
 
               if (field === 'price') {
                 obj.price = parseRuPrice(raw[idx]);
-              } else if (field === 'inStock') {
-                const val = String(raw[idx]).toLowerCase();
-                obj.inStock = val === '1' || val === 'true' || val === 'да' || val === 'yes';
+              } else if (field === 'stock') {
+                const valStr = String(raw[idx]).trim().toLowerCase();
+                // Текстовое наличие ("да"/"нет") → 1/0; число → как есть
+                if (valStr === 'да' || valStr === 'true' || valStr === 'yes') obj.stock = 1;
+                else if (valStr === 'нет' || valStr === 'false' || valStr === 'no') obj.stock = 0;
+                else {
+                  const n = parseInt(valStr.replace(/\s/g, ''), 10);
+                  obj.stock = Number.isFinite(n) ? n : null;
+                }
               } else {
                 (obj as Record<string, unknown>)[field] = String(raw[idx]).trim();
               }
@@ -129,7 +137,7 @@ export function parseExcelFile(file: File): Promise<ExcelRow[]> {
                 color: obj.color,
                 dimensions: obj.dimensions,
                 image: obj.image,
-                inStock: obj.inStock ?? true,
+                stock: obj.stock ?? null,
               });
             }
           }
@@ -157,7 +165,8 @@ export function excelRowsToProducts(rows: ExcelRow[]): Product[] {
     material: row.material,
     color: row.color,
     dimensions: row.dimensions,
-    inStock: row.inStock,
+    stock: row.stock,
+    colors: [],
     badges: [],
     createdAt: now,
     updatedAt: now,
@@ -166,8 +175,8 @@ export function excelRowsToProducts(rows: ExcelRow[]): Product[] {
 
 export function getExcelTemplate(): void {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Артикул', 'Название', 'Категория', 'Цена', 'Описание', 'Материал', 'Цвет', 'Размер', 'Изображение', 'Наличие'],
-    ['CM-001', 'Диван Марсель', 'Диваны', 485000, 'Описание товара', 'Велюр', 'Серый', '240×95×85 см', 'https://...', 1],
+    ['Артикул', 'Название', 'Категория', 'Цена', 'Описание', 'Материал', 'Цвет', 'Размер', 'Изображение', 'Остаток'],
+    ['CM-001', 'Диван Марсель', 'Диваны', 485000, 'Описание товара', 'Велюр', 'Серый', '240×95×85 см', 'https://...', 5],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Товары');
