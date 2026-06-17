@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router';
 import { useCart } from '../../hooks/useCart';
 import { useCompare } from '../../hooks/useCompare';
 import { useCategories } from '../../hooks/useCategories';
+import mainLogo from '../../assets/main-logo.png';
 
 export function Header() {
   const [scrolled, setScrolled]       = useState(false);
@@ -154,17 +155,16 @@ export function Header() {
 
           {/* CENTER — logo */}
           <Link to="/"
-            className="flex flex-col items-center leading-none justify-self-center transition-opacity duration-300"
+            className="flex items-center justify-self-center transition-opacity duration-300"
             style={{
               opacity: logoVisible ? 1 : 0,
               pointerEvents: logoVisible ? 'auto' : 'none',
             }}>
-            <span className="font-['Playfair_Display'] text-base sm:text-lg lg:text-[22px] font-medium tracking-[5px] sm:tracking-[6px] text-[#3D2C25]">
-              COMFORT
-            </span>
-            <span className="text-[6.5px] sm:text-[7px] tracking-[3.5px] sm:tracking-[4px] uppercase mt-1 text-[#9A8070] font-['Inter']">
-              JIHAZ ÜII
-            </span>
+            <img
+              src={mainLogo}
+              alt="Comfort — салон мебели"
+              className="h-7 sm:h-8 lg:h-9 w-auto select-none"
+            />
           </Link>
 
           {/* RIGHT — search + compare + cart */}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { supabase } from '../../lib/supabase';
 import { T } from '../ui';
+import mainLogo from '../../assets/main-logo.png';
 
 const NAV = [
   {
@@ -68,10 +69,12 @@ export function AdminLayout() {
         position: 'sticky', top: 0, height: '100vh',
       }}>
         <div style={{ padding: '26px 22px 20px' }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, letterSpacing: 5, color: T.ink, fontWeight: 500 }}>
-            COMFORT
-          </div>
-          <div style={{ fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase', color: T.faint, marginTop: 5 }}>
+          <img
+            src={mainLogo}
+            alt="Comfort — салон мебели"
+            style={{ height: 30, width: 'auto', objectFit: 'contain', display: 'block' }}
+          />
+          <div style={{ fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase', color: T.faint, marginTop: 8 }}>
             Панель управления
           </div>
         </div>

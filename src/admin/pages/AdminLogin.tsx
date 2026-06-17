@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '../../lib/supabase';
 import { T } from '../ui';
+import mainLogo from '../../assets/main-logo.png';
 
 export function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -38,9 +39,11 @@ export function AdminLogin() {
       <div style={{ width: '100%', maxWidth: 384 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 26 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 27, letterSpacing: 6, color: T.ink, fontWeight: 500, marginBottom: 7 }}>
-            COMFORT
-          </div>
+          <img
+            src={mainLogo}
+            alt="Comfort — салон мебели"
+            style={{ height: 52, width: 'auto', objectFit: 'contain', marginBottom: 10 }}
+          />
           <p style={{ fontSize: 10, letterSpacing: 2.5, textTransform: 'uppercase', color: T.muted }}>
             Панель управления
           </p>
