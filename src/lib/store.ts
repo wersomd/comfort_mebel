@@ -1,4 +1,4 @@
-import type { Product, ProductColor, Category } from '../types';
+import type { Product, ProductColor, ProductSize, Category } from '../types';
 import { supabase } from './supabase';
 
 /* ── Row types (snake_case как в БД) ─────────────────────────────────── */
@@ -18,6 +18,7 @@ interface ProductRow {
   related_ids: string[];
   stock: number | null;
   colors: ProductColor[] | null;
+  sizes: ProductSize[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -53,6 +54,7 @@ function productFromRow(r: ProductRow): Product {
     inStock: true,
     stock: r.stock ?? null,
     colors: r.colors ?? [],
+    sizes: r.sizes ?? [],
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -75,6 +77,7 @@ function productToRow(p: Product): Omit<ProductRow, 'created_at' | 'updated_at'>
     related_ids: p.relatedIds || [],
     stock: p.stock ?? null,
     colors: p.colors ?? [],
+    sizes: p.sizes ?? [],
   };
 }
 
@@ -140,6 +143,7 @@ export async function updateProduct(
   if ('relatedIds' in updates)          patch.related_ids = updates.relatedIds ?? [];
   if ('stock'      in updates)          patch.stock       = updates.stock ?? null;
   if ('colors'     in updates)          patch.colors      = updates.colors ?? [];
+  if ('sizes'      in updates)          patch.sizes       = updates.sizes ?? [];
 
   const { error } = await supabase.from('products').update(patch).eq('id', id);
   if (error) throw error;

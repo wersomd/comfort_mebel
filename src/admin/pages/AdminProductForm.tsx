@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router';
 import { useProducts } from '../../hooks/useProducts';
 import { useCategories } from '../../hooks/useCategories';
 import { uploadImage } from '../../lib/upload';
+import { nextSku } from '../../lib/utils';
 import type { Product, Category } from '../../types';
 import { T } from '../ui';
 
@@ -58,11 +59,15 @@ function CategorySelect({ categories, value, onChange, err }: {
 const EMPTY: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = {
   sku: '', name: '', category: '', price: 0, description: '',
   images: [], material: '', color: '', dimensions: '', badges: [], relatedIds: [],
-  stock: null, colors: [],
+  stock: null, colors: [], sizes: [],
 };
 
 function newColorId(): string {
   return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function newSizeId(): string {
+  return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
 /* ── Sortable image grid (drag-and-drop) ───────────────────── */
@@ -165,18 +170,14 @@ function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) 
       background: T.pageBg, border: `1px solid ${T.border}`,
       borderRadius: T.radiusSm, padding: 16,
     }}>
-      {/* Первый ряд: свотч + hex + название + остаток + удалить */}
-      <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr 1.4fr 1fr auto', gap: 12, alignItems: 'end', marginBottom: 12 }}>
+      {/* Первый ряд: свотч + название + остаток + удалить */}
+      <div style={{ display: 'grid', gridTemplateColumns: '52px 1.8fr 1fr auto', gap: 12, alignItems: 'end', marginBottom: 12 }}>
         <div>
-          <label style={tinyLabel}>Свотч</label>
+          <label style={tinyLabel}>Цвет</label>
           <input type="color" value={c.hex || '#888888'}
             onChange={e => onChange({ hex: e.target.value })}
+            title="Нажмите чтобы выбрать оттенок"
             style={{ width: 52, height: 36, border: `1px solid ${T.border}`, borderRadius: T.radiusXs, cursor: 'pointer', padding: 0, background: 'none' }} />
-        </div>
-        <div>
-          <label style={tinyLabel}>HEX</label>
-          <input type="text" value={c.hex} onChange={e => onChange({ hex: e.target.value })}
-            placeholder="#888888" style={{ ...inputBase, fontFamily: 'monospace' }} />
         </div>
         <div>
           <label style={tinyLabel}>Название цвета</label>
@@ -232,6 +233,131 @@ function ColorRow({ c, uploading, onChange, onRemove, onFiles }: ColorRowProps) 
   );
 }
 
+/* ── Size variant row ──────────────────────────────────────── */
+interface SizeRowProps {
+  s: { id: string; label: string; dimensions?: string | null; price?: number | null; oldPrice?: number | null; images?: string[]; stock?: number | null };
+  uploading: boolean;
+  onChange: (patch: Partial<SizeRowProps['s']>) => void;
+  onRemove: () => void;
+  onFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+function SizeRow({ s, uploading, onChange, onRemove, onFiles }: SizeRowProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const inputBase: React.CSSProperties = {
+    border: `1px solid ${T.border}`, background: T.card,
+    padding: '9px 12px', fontSize: 13, color: T.ink, outline: 'none',
+    fontFamily: T.font, borderRadius: T.radiusSm, width: '100%', boxSizing: 'border-box',
+  };
+  const tinyLabel: React.CSSProperties = {
+    display: 'block', fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase',
+    color: T.muted, marginBottom: 6, fontWeight: 600,
+  };
+  const images = s.images ?? [];
+
+  return (
+    <div style={{ background: T.pageBg, border: `1px solid ${T.border}`, borderRadius: T.radiusSm, padding: 16 }}>
+      {/* Первый ряд: название + габариты + остаток + удалить */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 1fr auto', gap: 12, alignItems: 'end', marginBottom: 12 }}>
+        <div>
+          <label style={tinyLabel}>Название размера</label>
+          <input type="text" value={s.label} onChange={e => onChange({ label: e.target.value })}
+            placeholder="Угловой" style={inputBase} />
+        </div>
+        <div>
+          <label style={tinyLabel}>Габариты</label>
+          <input type="text" value={s.dimensions ?? ''} onChange={e => onChange({ dimensions: e.target.value || null })}
+            placeholder="300×200×85 см" style={inputBase} />
+        </div>
+        <div>
+          <label style={tinyLabel}>Остаток (шт.)</label>
+          <input type="number" min="0" value={s.stock ?? ''}
+            onChange={e => onChange({ stock: e.target.value === '' ? null : Number(e.target.value) })}
+            placeholder="Не учитываем" style={inputBase} />
+        </div>
+        <button type="button" onClick={onRemove}
+          style={{ background: 'none', border: 'none', color: T.danger, fontSize: 12, cursor: 'pointer', fontFamily: T.font, padding: '9px 4px' }}>
+          Удалить
+        </button>
+      </div>
+
+      {/* Второй ряд: цена + старая цена */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={tinyLabel}>Цена этого размера (₸)</label>
+          <input type="number" min="0" value={s.price ?? ''}
+            onChange={e => onChange({ price: e.target.value === '' ? null : Number(e.target.value) })}
+            placeholder="Пусто = базовая цена товара" style={inputBase} />
+        </div>
+        <div>
+          <label style={tinyLabel}>Старая цена (₸)</label>
+          <input type="number" min="0" value={s.oldPrice ?? ''}
+            onChange={e => onChange({ oldPrice: e.target.value === '' ? null : Number(e.target.value) })}
+            placeholder="Для скидки (опц.)" style={inputBase} />
+        </div>
+      </div>
+
+      {/* Images (опционально) */}
+      <div>
+        <label style={tinyLabel}>Фото размера (опционально — иначе берутся фото цвета/товара)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFiles} style={{ display: 'none' }} />
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} style={{
+            background: T.card, color: T.brand, border: `1px solid ${T.brand}`, borderRadius: T.radiusSm,
+            padding: '7px 13px', fontSize: 12, fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: T.font,
+            opacity: uploading ? 0.6 : 1,
+          }}>
+            {uploading ? 'Загрузка...' : '+ Фото с компьютера'}
+          </button>
+          {images.length > 0 && <span style={{ fontSize: 11.5, color: T.muted }}>{images.length} фото</span>}
+        </div>
+        <SortableImageGrid
+          images={images}
+          thumbSize={68}
+          onChange={next => onChange({ images: next })}
+          hint="Перетаскивайте чтобы менять порядок. Первое фото показывается при выборе этого размера."
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ── Палитра готовых цветов (клиенту не надо знать HEX) ─────── */
+const PRESET_COLORS: { name: string; hex: string }[] = [
+  { name: 'Белый',       hex: '#FFFFFF' },
+  { name: 'Бежевый',     hex: '#E8D9C6' },
+  { name: 'Серый',       hex: '#9AA0A6' },
+  { name: 'Тёмно-серый', hex: '#4A4A4A' },
+  { name: 'Чёрный',      hex: '#1A1A1A' },
+  { name: 'Коричневый',  hex: '#6B4226' },
+  { name: 'Синий',       hex: '#3B5BA5' },
+  { name: 'Зелёный',     hex: '#4E7C59' },
+  { name: 'Жёлтый',      hex: '#E6B800' },
+  { name: 'Красный',     hex: '#B3402F' },
+  { name: 'Розовый',     hex: '#D9A7B0' },
+  { name: 'Бирюзовый',   hex: '#3FA7A0' },
+];
+
+/* ── Сворачиваемый блок (прогрессивное раскрытие формы) ─────── */
+function Collapsible({ title, hint, defaultOpen = false, children }: {
+  title: string; hint?: string; defaultOpen?: boolean; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: T.radius, boxShadow: T.shadowSm, marginBottom: 16, overflow: 'hidden' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'none', border: 'none', padding: '20px 26px', cursor: 'pointer', fontFamily: T.font, textAlign: 'left' }}>
+        <div>
+          <p style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{title}</p>
+          {hint && <p style={{ fontSize: 11.5, color: T.faint, marginTop: 4 }}>{hint}</p>}
+        </div>
+        <span style={{ color: T.muted, fontSize: 18, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', lineHeight: 1 }}>⌄</span>
+      </button>
+      {open && <div style={{ padding: '0 26px 26px' }}>{children}</div>}
+    </div>
+  );
+}
+
 export function AdminProductForm() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === 'new' || !id;
@@ -266,6 +392,7 @@ export function AdminProductForm() {
         relatedIds: existing.relatedIds || [],
         stock: existing.stock ?? null,
         colors: existing.colors ?? [],
+        sizes: existing.sizes ?? [],
       });
       setHydrated(true);
     }
@@ -307,7 +434,8 @@ export function AdminProductForm() {
   const colors = form.colors || [];
   const updateColor = (cid: string, patch: Partial<typeof colors[number]>) =>
     set('colors', colors.map(c => c.id === cid ? { ...c, ...patch } : c));
-  const addColor = () => set('colors', [...colors, { id: newColorId(), name: '', hex: '#888888', images: [], stock: null, material: null }]);
+  const addColor = (preset?: { name: string; hex: string }) =>
+    set('colors', [...colors, { id: newColorId(), name: preset?.name ?? '', hex: preset?.hex ?? '#888888', images: [], stock: null, material: null }]);
   const removeColor = (cid: string) => set('colors', colors.filter(c => c.id !== cid));
 
   const [uploadingColor, setUploadingColor] = useState<string | null>(null);
@@ -329,13 +457,38 @@ export function AdminProductForm() {
     }
   };
 
+  /* ── Размерные варианты ──────────────────────────────────── */
+  const sizes = form.sizes || [];
+  const updateSize = (sid: string, patch: Partial<typeof sizes[number]>) =>
+    set('sizes', sizes.map(s => s.id === sid ? { ...s, ...patch } : s));
+  const addSize = () => set('sizes', [...sizes, { id: newSizeId(), label: '', dimensions: null, price: null, oldPrice: null, images: [], stock: null }]);
+  const removeSize = (sid: string) => set('sizes', sizes.filter(s => s.id !== sid));
+
+  const [uploadingSize, setUploadingSize] = useState<string | null>(null);
+  const handleSizeFiles = async (sid: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploadingSize(sid);
+    try {
+      const folder = `products/${form.sku || existing?.id || 'new'}/sizes/${sid}`;
+      const urls = await Promise.all(files.map(f => uploadImage(f, folder, 1400)));
+      const current = sizes.find(s => s.id === sid);
+      if (current) updateSize(sid, { images: [...(current.images ?? []), ...urls] });
+    } catch (err) {
+      console.error('size upload failed', err);
+      alert('Не удалось загрузить фото размера.');
+    } finally {
+      setUploadingSize(null);
+      e.target.value = '';
+    }
+  };
+
   const toggleBadge = (b: 'new' | 'popular' | 'sale') => {
     set('badges', form.badges.includes(b) ? form.badges.filter(x => x !== b) : [...form.badges, b]);
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.sku.trim()) e.sku = 'Обязательное';
     if (!form.name.trim()) e.name = 'Обязательное';
     if (!form.category) e.category = 'Выберите категорию';
     if (!form.price || form.price <= 0) e.price = 'Укажите цену';
@@ -348,8 +501,11 @@ export function AdminProductForm() {
     if (!validate()) return;
     setSaving(true);
     try {
-      if (isNew) await create(form);
-      else await update(id!, form);
+      // Артикул вручную не вводится — если пуст, генерируем автоматически
+      const sku = form.sku.trim() || nextSku(products.map(p => p.sku));
+      const payload = { ...form, sku };
+      if (isNew) await create(payload);
+      else await update(id!, payload);
       navigate('/admin/products');
     } catch (err) {
       console.error('save failed', err);
@@ -411,25 +567,20 @@ export function AdminProductForm() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Main info */}
+        {/* Главное */}
         <div style={card}>
-          <p style={sectionHead}>Основная информация</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-            <div>
-              <label style={label}>Артикул *</label>
-              <input value={form.sku} onChange={e => set('sku', e.target.value)} style={input(errors.sku)} placeholder="CM-001" />
-              {errors.sku && <p style={{ fontSize: 11, color: T.danger, marginTop: 4 }}>{errors.sku}</p>}
-            </div>
-            <div>
-              <label style={label}>Категория *</label>
-              <CategorySelect categories={categories} value={form.category} onChange={v => set('category', v)} err={errors.category} />
-            </div>
+          <p style={sectionHead}>Главное</p>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={label}>Название товара *</label>
+            <input value={form.name} onChange={e => set('name', e.target.value)}
+              style={{ ...input(errors.name), fontSize: 15, padding: '12px 14px' }} placeholder="Диван Марсель" />
+            {errors.name && <p style={{ fontSize: 11, color: T.danger, marginTop: 4 }}>{errors.name}</p>}
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={label}>Название *</label>
-            <input value={form.name} onChange={e => set('name', e.target.value)} style={input(errors.name)} placeholder="Диван Марсель" />
-            {errors.name && <p style={{ fontSize: 11, color: T.danger, marginTop: 4 }}>{errors.name}</p>}
+            <label style={label}>Категория *</label>
+            <CategorySelect categories={categories} value={form.category} onChange={v => set('category', v)} err={errors.category} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -440,11 +591,11 @@ export function AdminProductForm() {
             </div>
             <div>
               <label style={label}>Старая цена (₸)</label>
-              <input type="number" value={form.oldPrice || ''} onChange={e => set('oldPrice', e.target.value ? Number(e.target.value) : undefined)} style={input()} placeholder="Опционально" />
+              <input type="number" value={form.oldPrice || ''} onChange={e => set('oldPrice', e.target.value ? Number(e.target.value) : undefined)} style={input()} placeholder="Если есть скидка" />
             </div>
             <div>
               <label style={label}>Остаток (шт.)</label>
-              <input type="number" min="0" value={form.stock ?? ''} onChange={e => set('stock', e.target.value === '' ? null : Number(e.target.value))} style={input()} placeholder="Пусто = не учитываем" />
+              <input type="number" min="0" value={form.stock ?? ''} onChange={e => set('stock', e.target.value === '' ? null : Number(e.target.value))} style={input()} placeholder="Пусто = всегда в наличии" />
               <p style={{ fontSize: 10, color: T.faint, marginTop: 4 }}>0 — нет в наличии. Игнорируется если есть цвета.</p>
             </div>
           </div>
@@ -456,30 +607,9 @@ export function AdminProductForm() {
           </div>
         </div>
 
-        {/* Specs — без поля Цвет (он редактируется в "Цветовые варианты" ниже) */}
+        {/* Фото */}
         <div style={card}>
-          <p style={sectionHead}>Характеристики</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            {[
-              { key: 'material',   label: 'Материал', ph: 'Велюр' },
-              { key: 'dimensions', label: 'Размер',   ph: '240×95×85 см' },
-            ].map(f => (
-              <div key={f.key}>
-                <label style={label}>{f.label}</label>
-                <input value={(form as Record<string, unknown>)[f.key] as string || ''}
-                  onChange={e => set(f.key as keyof typeof form, e.target.value)}
-                  style={input()} placeholder={f.ph} />
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize: 11, color: T.faint, marginTop: 10 }}>
-            Цвет задаётся в блоке «Цветовые варианты» ниже.
-          </p>
-        </div>
-
-        {/* Images */}
-        <div style={card}>
-          <p style={sectionHead}>Изображения</p>
+          <p style={sectionHead}>Фото товара</p>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addImage())}
@@ -511,26 +641,28 @@ export function AdminProductForm() {
           />
         </div>
 
-        {/* Colors / Variants */}
-        <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, borderBottom: `1px solid ${T.line}`, paddingBottom: 12 }}>
-            <div>
-              <p style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: T.muted, fontWeight: 600 }}>Цветовые варианты</p>
-              <p style={{ fontSize: 11.5, color: T.faint, marginTop: 5 }}>
-                Если есть несколько цветов — добавьте каждый с фото и остатком. У клиента появятся кружочки-свотчи.
-              </p>
-            </div>
-            <button type="button" onClick={addColor} style={{
-              background: T.card, color: T.brand, border: `1px solid ${T.brand}`, borderRadius: T.radiusSm,
-              padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.font,
-            }}>
-              + Добавить цвет
+        {/* Цвета */}
+        <Collapsible
+          title={`Цвета товара${colors.length ? ` · ${colors.length}` : ''}`}
+          hint="Нажмите готовый цвет ниже, чтобы добавить. У клиента появятся кружочки-свотчи с фото."
+          defaultOpen={colors.length > 0}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {PRESET_COLORS.map(p => (
+              <button key={p.name} type="button" onClick={() => addColor(p)} title={`Добавить «${p.name}»`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px 6px 7px', border: `1px solid ${T.border}`, borderRadius: 999, background: T.card, cursor: 'pointer', fontFamily: T.font, fontSize: 12, color: T.ink }}>
+                <span style={{ width: 16, height: 16, borderRadius: '50%', background: p.hex, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.15)' }} />
+                {p.name}
+              </button>
+            ))}
+            <button type="button" onClick={() => addColor()}
+              style={{ padding: '6px 12px', border: `1px dashed ${T.brand}`, borderRadius: 999, background: T.card, color: T.brand, cursor: 'pointer', fontFamily: T.font, fontSize: 12, fontWeight: 600 }}>
+              + Свой цвет
             </button>
           </div>
 
           {colors.length === 0 ? (
             <div style={{ padding: '24px 16px', textAlign: 'center', color: T.faint, fontSize: 12.5, border: `1px dashed ${T.border}`, borderRadius: T.radiusSm }}>
-              Цветовых вариантов нет. Будет использоваться остаток выше и общие фото товара.
+              Цветов нет. Будут использоваться остаток выше и общие фото товара.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -544,57 +676,111 @@ export function AdminProductForm() {
               ))}
             </div>
           )}
-        </div>
+        </Collapsible>
 
-        {/* Badges */}
-        <div style={card}>
-          <p style={sectionHead}>Метки</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-            {[
-              { key: 'new',     label: 'Новинка',      checked: form.badges.includes('new') },
-              { key: 'popular', label: 'Популярный',   checked: form.badges.includes('popular') },
-              { key: 'sale',    label: 'Sale / Скидка', checked: form.badges.includes('sale') },
-            ].map(cb => (
-              <label key={cb.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={cb.checked}
-                  onChange={() => toggleBadge(cb.key as 'new' | 'popular' | 'sale')}
-                  style={{ accentColor: T.brand, width: 15, height: 15 }} />
-                <span style={{ fontSize: 13, color: T.ink }}>{cb.label}</span>
-              </label>
-            ))}
+        {/* Размеры */}
+        <Collapsible
+          title={`Размеры${sizes.length ? ` · ${sizes.length}` : ''}`}
+          hint="Если у дивана несколько размеров — у каждого своя цена, габариты и фото. Цвет и размер выбираются независимо."
+          defaultOpen={sizes.length > 0}>
+          <div style={{ marginBottom: 14 }}>
+            <button type="button" onClick={addSize} style={{
+              background: T.card, color: T.brand, border: `1px solid ${T.brand}`, borderRadius: T.radiusSm,
+              padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.font,
+            }}>
+              + Добавить размер
+            </button>
           </div>
-        </div>
 
-        {/* Related products */}
-        <div style={card}>
-          <p style={sectionHead}>Покупают с этим товаром</p>
-          <select value="" onChange={e => addRelated(e.target.value)} style={{ ...input(), cursor: 'pointer' }}>
-            <option value="">+ Добавить товар...</option>
-            {products
-              .filter(p => p.id !== id && !(form.relatedIds || []).includes(p.id))
-              .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          {(form.relatedIds || []).length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-              {(form.relatedIds || []).map(rid => {
-                const rp = products.find(p => p.id === rid);
-                if (!rp) return null;
-                return (
-                  <div key={rid} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 10px', border: `1px solid ${T.line}`, borderRadius: T.radiusSm }}>
-                    <div style={{ width: 38, height: 38, borderRadius: T.radiusXs, overflow: 'hidden', background: T.pageBg, flexShrink: 0, border: `1px solid ${T.line}` }}>
-                      {rp.images[0] && <img src={rp.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    </div>
-                    <span style={{ flex: 1, fontSize: 13, color: T.ink }}>{rp.name}</span>
-                    <button type="button" onClick={() => removeRelated(rid)}
-                      style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 18, fontFamily: T.font, lineHeight: 1 }}>
-                      ×
-                    </button>
-                  </div>
-                );
-              })}
+          {sizes.length === 0 ? (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: T.faint, fontSize: 12.5, border: `1px dashed ${T.border}`, borderRadius: T.radiusSm }}>
+              Размеров нет. Будут использоваться цена и габариты из «Дополнительно».
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {sizes.map(s => (
+                <SizeRow key={s.id}
+                  s={s}
+                  uploading={uploadingSize === s.id}
+                  onChange={patch => updateSize(s.id, patch)}
+                  onRemove={() => removeSize(s.id)}
+                  onFiles={e => handleSizeFiles(s.id, e)} />
+              ))}
             </div>
           )}
-        </div>
+        </Collapsible>
+
+        {/* Дополнительно */}
+        <Collapsible
+          title="Дополнительно"
+          hint="Материал, габариты, метки, артикул, сопутствующие товары"
+          defaultOpen={false}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+            <div>
+              <label style={label}>Материал</label>
+              <input value={form.material || ''} onChange={e => set('material', e.target.value)} style={input()} placeholder="Велюр" />
+            </div>
+            <div>
+              <label style={label}>Габариты (если один размер)</label>
+              <input value={form.dimensions || ''} onChange={e => set('dimensions', e.target.value)} style={input()} placeholder="240×95×85 см" />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 18 }}>
+            <label style={label}>Метки</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+              {[
+                { key: 'new',     label: 'Новинка',       checked: form.badges.includes('new') },
+                { key: 'popular', label: 'Популярный',    checked: form.badges.includes('popular') },
+                { key: 'sale',    label: 'Sale / Скидка', checked: form.badges.includes('sale') },
+              ].map(cb => (
+                <label key={cb.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={cb.checked}
+                    onChange={() => toggleBadge(cb.key as 'new' | 'popular' | 'sale')}
+                    style={{ accentColor: T.brand, width: 15, height: 15 }} />
+                  <span style={{ fontSize: 13, color: T.ink }}>{cb.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 18 }}>
+            <label style={label}>Артикул</label>
+            <input value={form.sku} onChange={e => set('sku', e.target.value)} style={input()} placeholder="Сгенерируется автоматически (CM-0001)" />
+            <p style={{ fontSize: 10, color: T.faint, marginTop: 4 }}>Можно не заполнять — присвоится сам.</p>
+          </div>
+
+          <div>
+            <label style={label}>Покупают с этим товаром</label>
+            <select value="" onChange={e => addRelated(e.target.value)} style={{ ...input(), cursor: 'pointer' }}>
+              <option value="">+ Добавить товар...</option>
+              {products
+                .filter(p => p.id !== id && !(form.relatedIds || []).includes(p.id))
+                .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            {(form.relatedIds || []).length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                {(form.relatedIds || []).map(rid => {
+                  const rp = products.find(p => p.id === rid);
+                  if (!rp) return null;
+                  return (
+                    <div key={rid} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 10px', border: `1px solid ${T.line}`, borderRadius: T.radiusSm }}>
+                      <div style={{ width: 38, height: 38, borderRadius: T.radiusXs, overflow: 'hidden', background: T.pageBg, flexShrink: 0, border: `1px solid ${T.line}` }}>
+                        {rp.images[0] && <img src={rp.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                      </div>
+                      <span style={{ flex: 1, fontSize: 13, color: T.ink }}>{rp.name}</span>
+                      <button type="button" onClick={() => removeRelated(rid)}
+                        style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 18, fontFamily: T.font, lineHeight: 1 }}>
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Collapsible>
 
         {/* Submit */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

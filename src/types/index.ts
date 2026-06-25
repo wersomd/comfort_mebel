@@ -7,6 +7,16 @@ export interface ProductColor {
   material?: string | null;  // материал именно этого варианта (например "Велюр" / "Кожа")
 }
 
+export interface ProductSize {
+  id: string;          // уникальный в рамках товара
+  label: string;       // "2-местный", "Угловой", "240 см"
+  dimensions?: string | null;  // "240×95×85 см" — переопределяет общий dimensions
+  price?: number | null;       // своя цена размера (null = базовая цена товара)
+  oldPrice?: number | null;    // своя старая цена (для расчёта скидки)
+  images?: string[];           // фото именно этого размера (опционально)
+  stock?: number | null;       // остаток конкретного размера (null = не учитываем)
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -22,6 +32,7 @@ export interface Product {
   inStock?: boolean;
   stock?: number | null;       // общий остаток (если нет цветных вариантов)
   colors?: ProductColor[];     // если задано — товар с вариантами цветов
+  sizes?: ProductSize[];       // если задано — товар с вариантами размеров
   badges: Array<'new' | 'popular' | 'sale'>;
   relatedIds?: string[];
   createdAt: string;
@@ -45,6 +56,10 @@ export type SortOption = 'default' | 'price_asc' | 'price_desc' | 'new' | 'popul
 export interface CartItem {
   product: Product;
   qty: number;
+  colorId?: string;       // выбранный цвет (если у товара есть варианты)
+  sizeId?: string;        // выбранный размер (если у товара есть варианты)
+  unitPrice?: number;     // зафиксированная цена варианта (иначе product.price)
+  variantLabel?: string;  // подпись варианта: "Цвет: Жёлтый · Размер: Угловой"
 }
 
 export interface CatalogFilters {

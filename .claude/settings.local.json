@@ -17,7 +17,31 @@
       "Bash(npx vite *)",
       "Bash(command -v convert)",
       "Bash(node -e \"try{require\\('sharp'\\);console.log\\('sharp ok'\\)}catch\\(e\\){console.log\\('no sharp module'\\)}\")",
-      "Skill(browse)"
+      "Skill(browse)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const b=fs.readFileSync\\('src/assets/logo.png'\\);if\\(b.slice\\(0,8\\).toString\\('hex'\\)==='89504e470d0a1a0a'\\){console.log\\('PNG '+b.readUInt32BE\\(16\\)+'x'+b.readUInt32BE\\(20\\)\\);}else{console.log\\('not png header'\\);}\")",
+      "Bash(mkdir -p public)",
+      "Bash(cp src/assets/logo.png public/logo.png)",
+      "Read(//tmp/**)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const b=fs.readFileSync\\('src/assets/main-logo.png'\\);console.log\\(b.readUInt32BE\\(16\\)+'x'+b.readUInt32BE\\(20\\)\\);\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(curl -s 'https://omqtpgbrohbrlagkzxbl.supabase.co/rest/v1/products?select=id,name,sizes,colors&order=updated_at.desc&limit=3' -H 'apikey: __TRACKED_VAR__' -H 'Authorization: Bearer __TRACKED_VAR__')",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse goto *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse console *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse text *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse screenshot *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse click *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse js *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse stop *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse snapshot *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse fill *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse dialog-accept *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse url *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse hover *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse handoff *)",
+      "Bash(/c/Users/coogn/.claude/skills/gstack/browse/dist/browse resume *)"
     ]
   }
 }

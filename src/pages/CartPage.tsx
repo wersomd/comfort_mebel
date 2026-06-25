@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../hooks/useCart';
 import { formatPrice } from '../lib/utils';
+import { cartLineKey, cartUnitPrice, resolveImages } from '../lib/variants';
 import { CheckoutModal } from '../components/CheckoutModal';
 
 export function CartPage() {
@@ -33,11 +34,17 @@ export function CartPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Items */}
             <div className="lg:col-span-2 space-y-0">
-              {items.map(item => (
-                <div key={item.product.id} className="flex gap-5 py-6 border-b border-[#E8D9C6]">
+              {items.map(item => {
+                const key = cartLineKey(item);
+                const color = item.colorId ? item.product.colors?.find(c => c.id === item.colorId) : undefined;
+                const size = item.sizeId ? item.product.sizes?.find(s => s.id === item.sizeId) : undefined;
+                const img = resolveImages(item.product, color, size)[0]
+                  || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400';
+                return (
+                <div key={key} className="flex gap-5 py-6 border-b border-[#E8D9C6]">
                   <Link to={`/product/${item.product.id}`} className="shrink-0">
                     <img
-                      src={item.product.images[0] || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400'}
+                      src={img}
                       alt={item.product.name}
                       className="w-24 h-24 object-cover bg-[#F5F5F5]"
                     />
@@ -47,28 +54,32 @@ export function CartPage() {
                       className="font-['Playfair_Display'] text-xl text-[#3D2C25] hover:text-[#C4A07A] transition-colors duration-200 block">
                       {item.product.name}
                     </Link>
-                    {item.product.material && (
+                    {item.variantLabel && (
+                      <p className="text-[12px] text-[#9A8070] mt-1 font-['Inter']">{item.variantLabel}</p>
+                    )}
+                    {!item.variantLabel && item.product.material && (
                       <p className="text-[12px] text-[#9A8070] mt-1 font-['Inter']">{item.product.material}</p>
                     )}
                     <p className="text-[14px] font-semibold text-[#3D2C25] mt-2 font-['Inter']">
-                      {formatPrice(item.product.price)}
+                      {formatPrice(cartUnitPrice(item))}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-4 shrink-0">
-                    <button onClick={() => remove(item.product.id)}
+                    <button onClick={() => remove(key)}
                       className="text-[11px] text-[#9A8070] hover:text-[#3D2C25] transition-colors duration-200 font-['Inter']">
                       Удалить
                     </button>
                     <div className="flex items-center border border-[#E8D9C6]">
-                      <button onClick={() => updateQty(item.product.id, -1)}
+                      <button onClick={() => updateQty(key, -1)}
                         className="w-8 h-8 flex items-center justify-center text-[#9A8070] hover:text-[#3D2C25] hover:bg-[#F5F5F5] transition-colors text-lg">−</button>
                       <span className="w-10 text-center text-[14px] text-[#3D2C25] font-['Inter']">{item.qty}</span>
-                      <button onClick={() => updateQty(item.product.id, 1)}
+                      <button onClick={() => updateQty(key, 1)}
                         className="w-8 h-8 flex items-center justify-center text-[#9A8070] hover:text-[#3D2C25] hover:bg-[#F5F5F5] transition-colors text-lg">+</button>
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Summary */}

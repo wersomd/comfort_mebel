@@ -7,6 +7,10 @@ import { useCategories } from '../hooks/useCategories';
 import { ConsultModal } from '../components/ConsultModal';
 import { ProductCard } from '../components/ProductCard';
 import { formatPrice } from '../lib/utils';
+import {
+  resolveImages, resolvePrice, resolveOldPrice, resolveDimensions,
+  resolveAvailable, variantLabel,
+} from '../lib/variants';
 import type { Product } from '../types';
 
 export function ProductPage() {
@@ -19,14 +23,18 @@ export function ProductPage() {
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
 
   const product = products.find(p => p.id === id);
 
-  // Инициализируем выбранный цвет когда product подгрузится
+  // Инициализируем выбранный цвет/размер когда product подгрузится
   useEffect(() => {
     if (product && (product.colors?.length ?? 0) > 0) {
       setSelectedColorId(prev => prev ?? product.colors![0].id);
+    }
+    if (product && (product.sizes?.length ?? 0) > 0) {
+      setSelectedSizeId(prev => prev ?? product.sizes![0].id);
     }
   }, [product]);
 
@@ -57,33 +65,40 @@ export function ProductPage() {
   const catName  = categories.find(c => c.slug === product.category)?.name;
 
   const productColors = product.colors || [];
-  const hasVariants = productColors.length > 0;
+  const productSizes = product.sizes || [];
+  const hasColors = productColors.length > 0;
+  const hasSizes = productSizes.length > 0;
   const activeColor = productColors.find(c => c.id === selectedColorId);
-  const imgs = (() => {
-    if (activeColor && activeColor.images.length > 0) return activeColor.images;
-    return product.images.length ? product.images : ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200'];
-  })();
-  const discount = product.oldPrice ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) : 0;
+  const activeSize = productSizes.find(s => s.id === selectedSizeId);
 
-  // При смене цвета — сбрасываем активное фото
+  const resolved = resolveImages(product, activeColor, activeSize);
+  const imgs = resolved.length ? resolved : ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200'];
+  const price = resolvePrice(product, activeSize);
+  const oldPrice = resolveOldPrice(product, activeSize);
+  const dimensions = resolveDimensions(product, activeSize);
+  const discount = oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
+
+  // При смене цвета/размера — сбрасываем активное фото
   const pickColor = (cid: string) => {
     setSelectedColorId(cid);
     setActiveImg(0);
   };
+  const pickSize = (sid: string) => {
+    setSelectedSizeId(sid);
+    setActiveImg(0);
+  };
 
-  // Доступность
-  const available = (() => {
-    if (activeColor) return activeColor.stock == null || activeColor.stock > 0;
-    if (hasVariants) return productColors.some(c => c.stock == null || c.stock > 0);
-    if (product.stock == null) return true;
-    return product.stock > 0;
-  })();
+  // Доступность с учётом выбранных цвета и размера
+  const available = resolveAvailable(product, activeColor, activeSize);
 
   const stockHint = (() => {
+    if (activeSize && activeSize.stock != null) {
+      return activeSize.stock > 0 ? `В наличии: ${activeSize.stock} шт.` : 'Нет в наличии';
+    }
     if (activeColor && activeColor.stock != null) {
       return activeColor.stock > 0 ? `В наличии: ${activeColor.stock} шт.` : 'Нет в наличии';
     }
-    if (!hasVariants && product.stock != null) {
+    if (!hasColors && !hasSizes && product.stock != null) {
       return product.stock > 0 ? `В наличии: ${product.stock} шт.` : 'Нет в наличии';
     }
     return null;
@@ -91,7 +106,12 @@ export function ProductPage() {
 
   const handleAddToCart = () => {
     if (!available) return;
-    add(product);
+    add(product, {
+      colorId: activeColor?.id,
+      sizeId: activeSize?.id,
+      unitPrice: price,
+      variantLabel: variantLabel(activeColor, activeSize),
+    });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -175,9 +195,9 @@ export function ProductPage() {
               )}
 
               <div className="flex items-baseline gap-4 mb-2">
-                <span className="text-3xl font-['Inter'] font-bold text-[#3D2C25]">{formatPrice(product.price)}</span>
-                {product.oldPrice && (
-                  <span className="text-xl text-[#9A8070] line-through font-['Inter']">{formatPrice(product.oldPrice)}</span>
+                <span className="text-3xl font-['Inter'] font-bold text-[#3D2C25]">{formatPrice(price)}</span>
+                {oldPrice && (
+                  <span className="text-xl text-[#9A8070] line-through font-['Inter']">{formatPrice(oldPrice)}</span>
                 )}
               </div>
               {stockHint && (
@@ -192,7 +212,7 @@ export function ProductPage() {
               </p>
 
               {/* Color picker */}
-              {hasVariants && (
+              {hasColors && (
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] tracking-[1.5px] uppercase text-[#9A8070] font-['Inter'] font-semibold">
@@ -231,11 +251,48 @@ export function ProductPage() {
                 </div>
               )}
 
-              {/* Specs grid — без цвета (он выбирается ниже) */}
+              {/* Size picker */}
+              {hasSizes && (
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] tracking-[1.5px] uppercase text-[#9A8070] font-['Inter'] font-semibold">
+                      Размер
+                    </p>
+                    {activeSize?.dimensions && (
+                      <p className="text-[12px] text-[#3D2C25] font-['Inter']">{activeSize.dimensions}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {productSizes.map(s => {
+                      const isActive = s.id === selectedSizeId;
+                      const outOfStock = s.stock != null && s.stock <= 0;
+                      return (
+                        <button key={s.id} type="button"
+                          onClick={() => pickSize(s.id)}
+                          title={`${s.label}${outOfStock ? ' — нет в наличии' : ''}`}
+                          className={`relative px-4 py-2.5 text-[12px] font-['Inter'] transition-all duration-150 border ${
+                            isActive
+                              ? 'border-[#3D2C25] bg-[#3D2C25] text-white'
+                              : 'border-[#E8D9C6] text-[#3D2C25] hover:border-[#3D2C25]'
+                          } ${outOfStock ? 'opacity-45' : ''}`}>
+                          {s.label}
+                          {s.price != null && s.price !== product.price && (
+                            <span className={`block text-[10px] mt-0.5 ${isActive ? 'text-white/70' : 'text-[#9A8070]'}`}>
+                              {formatPrice(s.price)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Specs grid — без цвета и размера (они выбираются выше) */}
               <div className="border-t border-b border-[#E8D9C6] py-6 mb-8 grid grid-cols-2 gap-5">
                 {[
                   { key: 'material',   label: 'Материал', value: activeColor?.material || product.material },
-                  { key: 'dimensions', label: 'Размер',   value: product.dimensions },
+                  { key: 'dimensions', label: 'Габариты', value: dimensions },
                 ].filter(s => s.value).map(s => (
                   <div key={s.key}>
                     <p className="text-[10px] tracking-[1.5px] uppercase text-[#9A8070] mb-1 font-['Inter'] font-semibold">{s.label}</p>

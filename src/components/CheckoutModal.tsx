@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CartItem } from '../types';
 import { formatPrice } from '../lib/utils';
+import { cartLineKey, cartUnitPrice } from '../lib/variants';
 import { createLead } from '../lib/store';
 
 interface Props {
@@ -46,9 +47,9 @@ export function CheckoutModal({ open, onClose, items, total }: Props) {
         address: form.address.trim() || undefined,
         message: form.comment.trim() || undefined,
         cart: items.map(it => ({
-          name: it.product.name,
+          name: it.variantLabel ? `${it.product.name} (${it.variantLabel})` : it.product.name,
           qty: it.qty,
-          price: it.product.price,
+          price: cartUnitPrice(it),
         })),
         total: finalTotal,
         discount: discountAmt,
@@ -118,9 +119,14 @@ export function CheckoutModal({ open, onClose, items, total }: Props) {
             {/* Order summary */}
             <div className="bg-brand-light p-4 mb-7 space-y-2 max-h-40 overflow-y-auto">
               {items.map(item => (
-                <div key={item.product.id} className="flex justify-between text-[13px]">
-                  <span className="text-brand-dark">{item.product.name} × {item.qty}</span>
-                  <span className="text-brand-dark font-medium">{formatPrice(item.product.price * item.qty)}</span>
+                <div key={cartLineKey(item)} className="flex justify-between text-[13px] gap-3">
+                  <span className="text-brand-dark min-w-0">
+                    {item.product.name} × {item.qty}
+                    {item.variantLabel && (
+                      <span className="block text-[11px] text-brand-mid">{item.variantLabel}</span>
+                    )}
+                  </span>
+                  <span className="text-brand-dark font-medium shrink-0">{formatPrice(cartUnitPrice(item) * item.qty)}</span>
                 </div>
               ))}
             </div>

@@ -2,17 +2,19 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useProducts } from '../../hooks/useProducts';
 import { useCategories } from '../../hooks/useCategories';
-import { formatPrice } from '../../lib/utils';
+import { formatPrice, nextSku } from '../../lib/utils';
 import { exportProductsToExcel } from '../../lib/excel';
+import type { Product } from '../../types';
 import { T } from '../ui';
 
 export function AdminProducts() {
-  const { products, remove, removeMany } = useProducts();
+  const { products, remove, removeMany, create } = useProducts();
   const { categories } = useCategories();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
 
   const catName = (slug: string) => categories.find(c => c.slug === slug)?.name || slug;
 
@@ -30,6 +32,21 @@ export function AdminProducts() {
   const toggleAll = () => setSelected(selected.size === filtered.length ? new Set() : new Set(filtered.map(p => p.id)));
   const handleDeleteSelected = () => { removeMany([...selected]); setSelected(new Set()); };
   const handleDelete = (id: string) => { remove(id); setConfirmDelete(null); };
+
+  const handleDuplicate = async (p: Product) => {
+    if (duplicating) return;
+    setDuplicating(p.id);
+    try {
+      const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = p;
+      void _id; void _c; void _u;
+      await create({ ...rest, name: `${p.name} (копия)`, sku: nextSku(products.map(x => x.sku)) });
+    } catch (err) {
+      console.error('duplicate failed', err);
+      alert('Не удалось дублировать товар.');
+    } finally {
+      setDuplicating(null);
+    }
+  };
 
   const inputStyle: React.CSSProperties = {
     border: `1px solid ${T.border}`, background: T.card, padding: '10px 14px',
@@ -143,6 +160,12 @@ export function AdminProducts() {
                     <Link to={`/admin/products/${p.id}`} style={{ color: T.brand, textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
                       Изменить
                     </Link>
+                    <button onClick={() => handleDuplicate(p)} disabled={duplicating === p.id}
+                      style={{ fontSize: 12, color: T.muted, background: 'none', border: 'none', cursor: duplicating === p.id ? 'wait' : 'pointer', fontFamily: T.font, transition: 'color 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = T.brand)}
+                      onMouseLeave={e => (e.currentTarget.style.color = T.muted)}>
+                      {duplicating === p.id ? '...' : 'Дублировать'}
+                    </button>
                     {confirmDelete === p.id ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <button onClick={() => handleDelete(p.id)} style={{ fontSize: 12, color: T.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.font, fontWeight: 600 }}>Да</button>

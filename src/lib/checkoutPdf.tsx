@@ -1,5 +1,6 @@
 import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import type { CartItem } from '../types';
+import { cartLineKey, cartUnitPrice } from './variants';
 
 // Roboto — НЕ subset, один файл со всеми алфавитами (Latin + Cyrillic + Greek)
 import RobotoRegular from 'roboto-fontface/fonts/roboto/Roboto-Regular.woff?url';
@@ -295,25 +296,27 @@ function KPDocument({ form, items, subtotal, discountAmt, finalTotal }: {
             <Text style={[pdfStyles.th, pdfStyles.colTotal]}>Сумма</Text>
           </View>
 
-          {items.map((item, i) => (
-            <View key={item.product.id}
+          {items.map((item, i) => {
+            const unit = cartUnitPrice(item);
+            const specs = item.variantLabel
+              ? item.variantLabel
+              : [item.product.material, item.product.color, item.product.dimensions].filter(Boolean).join(' · ');
+            return (
+            <View key={cartLineKey(item)}
               style={[pdfStyles.row, i % 2 === 1 ? pdfStyles.rowAlt : {}]}
               wrap={false}>
               <Text style={[pdfStyles.rowPrice, pdfStyles.colNum]}>{i + 1}</Text>
               <View style={pdfStyles.colName}>
                 <Text style={pdfStyles.rowName}>{item.product.name}</Text>
                 {item.product.sku ? <Text style={pdfStyles.rowSku}>Артикул: {item.product.sku}</Text> : null}
-                {(item.product.material || item.product.color || item.product.dimensions) ? (
-                  <Text style={pdfStyles.rowSpec}>
-                    {[item.product.material, item.product.color, item.product.dimensions].filter(Boolean).join(' · ')}
-                  </Text>
-                ) : null}
+                {specs ? <Text style={pdfStyles.rowSpec}>{specs}</Text> : null}
               </View>
               <Text style={[pdfStyles.rowQty, pdfStyles.colQty]}>{item.qty}</Text>
-              <Text style={[pdfStyles.rowPrice, pdfStyles.colPrice]}>{pdfPrice(item.product.price)}</Text>
-              <Text style={[pdfStyles.rowSum, pdfStyles.colTotal]}>{pdfPrice(item.product.price * item.qty)}</Text>
+              <Text style={[pdfStyles.rowPrice, pdfStyles.colPrice]}>{pdfPrice(unit)}</Text>
+              <Text style={[pdfStyles.rowSum, pdfStyles.colTotal]}>{pdfPrice(unit * item.qty)}</Text>
             </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* ── Totals ────────────────────────────────────────── */}
